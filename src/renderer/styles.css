@@ -1458,3 +1458,32 @@ dialog {
     display: none;
   }
 }
+
+.youtube-connection {
+  border: 1px solid var(--line);
+  padding: 24px;
+  margin-bottom: 24px;
+  border-radius: 12px;
+}
+.youtube-connection h2 {
+  font-size: 18px;
+}
+.youtube-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+.youtube-connection .metric-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 20px 0 12px;
+}
+.youtube-confirm {
+  margin-top: 16px;
+}
+.youtube-confirm p {
+  margin-bottom: 12px;
+}
+.youtube-connection li {
+  margin: 8px 0;
+}

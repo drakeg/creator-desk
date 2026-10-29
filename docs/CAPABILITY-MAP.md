@@ -1,6 +1,6 @@
 # Creator Desk capability map
 
-Status: desktop-core is implemented. Version 0.2.0 adds local CSV/JSON imports and imported channel analytics. Live YouTube synchronization and the remaining modules are planned.
+Status: desktop-core is implemented. Version 0.2.0 adds local CSV/JSON imports and imported channel analytics. The 0.4 development branch adds desktop OAuth and manual read-only channel-total synchronization. Detailed analytics and the remaining modules are planned.
 
 ## Product scope
 
@@ -56,4 +56,4 @@ Each stage should deliver working workflows. Unimplemented features must be mark
 
 ## Current implementation
 
-See SPEC-desktop-core.md, SPEC-imports-dashboard.md, README.md and VERIFICATION-0.2.0.md. The next module boundary is live YouTube synchronization and its Google application configuration.
+See SPEC-desktop-core.md, SPEC-imports-dashboard.md, README.md and VERIFICATION-0.2.0.md. See YOUTUBE-CONNECTION.md for desktop OAuth and manual channel-total synchronization. Next: authorized daily analytics and upload synchronization.

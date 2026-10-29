@@ -1,3 +1,4 @@
+import { YouTubeConnection } from "./YouTubeConnection";
 import { useEffect, useState } from "react";
 import { FileUp, HardDrive, Info, BarChart3 } from "lucide-react";
 import type {
@@ -123,6 +124,7 @@ export function Dashboard() {
   };
   return (
     <div className="dashboard-content" aria-busy={loading || busy}>
+      <YouTubeConnection />
       <div className="dashboard-toolbar">
         <span className="local-report-label">
           <HardDrive size={14} />
@@ -301,7 +303,8 @@ export function Dashboard() {
               </p>
             </div>
             <span className="field-note">
-              No Google sign-in required. Live synchronization comes later.
+              Imports work offline. Connect YouTube in Settings for live channel
+              totals.
             </span>
           </section>
         )

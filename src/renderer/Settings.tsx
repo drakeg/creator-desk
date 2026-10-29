@@ -1,3 +1,4 @@
+import { YouTubeConnection } from "./YouTubeConnection";
 import { useState } from "react";
 import {
   ArrowDownToLine,
@@ -180,6 +181,7 @@ export function Settings({ state, busy, perform, restore }: Props) {
           </p>
         </div>
       </section>
+      {workspace && <YouTubeConnection settings />}
       <div className="privacy-note">
         <ShieldCheck size={20} />
         <p>

@@ -6,6 +6,7 @@ import {
   Menu,
   nativeTheme,
   session,
+  safeStorage,
   shell,
 } from "electron";
 import { join, resolve, isAbsolute } from "node:path";
@@ -17,6 +18,10 @@ import {
   restoreInput,
   type Result,
 } from "../shared/contracts";
+import { closeSync, readSync } from "node:fs";
+import { openRegularFile } from "./storage/files";
+import { CredentialVault } from "./credentials";
+import { YouTube } from "./youtube/service";
 import { Store } from "./storage/store";
 import { Backups } from "./storage/backups";
 import { Reports } from "./imports/reports";
@@ -34,6 +39,7 @@ let window: BrowserWindow | null = null;
 let store: Store;
 let backups: Backups;
 let reports: Reports;
+let youtube: YouTube;
 const rendererPath = join(__dirname, "../renderer/index.html");
 const rendererURL = pathToFileURL(rendererPath).href;
 let operations: Promise<unknown> = Promise.resolve();
@@ -69,6 +75,43 @@ function handle(
   });
 }
 function configureIPC() {
+  handle("getYouTube", z.undefined(), () => youtube.state());
+  handle("connectYouTube", z.undefined(), () => youtube.connect());
+  handle("cancelYouTube", z.undefined(), () => youtube.cancel());
+  handle("disconnectYouTube", z.undefined(), () => youtube.disconnect());
+  handle("syncYouTube", z.undefined(), () => youtube.sync());
+  handle("importYouTubeClient", z.undefined(), async () => {
+    const result = await dialog.showOpenDialog(window!, {
+      title: "Import Google Desktop app credentials",
+      properties: ["openFile"],
+      filters: [{ name: "Google credentials JSON", extensions: ["json"] }],
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    try {
+      const fd = openRegularFile(result.filePaths[0], 64000);
+      try {
+        const buffer = Buffer.alloc(64001);
+        let size = 0;
+        while (size < buffer.length) {
+          const n = readSync(fd, buffer, size, buffer.length - size, null);
+          if (!n) break;
+          size += n;
+        }
+        if (size > 64000) throw new Error("Oversized credentials");
+        return youtube.configure(
+          JSON.parse(buffer.subarray(0, size).toString("utf8")),
+        );
+      } finally {
+        closeSync(fd);
+      }
+    } catch (error) {
+      if (error instanceof CoreError) throw error;
+      throw new CoreError(
+        "INVALID_INPUT",
+        "Choose the original JSON credentials downloaded for a Google Desktop app client (under 64 KB).",
+      );
+    }
+  });
   handle("getDashboard", dashboardInput, (input) => reports.dashboard(input));
   handle("inspectImport", z.undefined(), async () => {
     const result = await dialog.showOpenDialog(window!, {
@@ -135,6 +178,7 @@ function configureIPC() {
   handle("confirmRestore", restoreInput, async (input) => {
     const { previewId } = restoreInput.parse(input);
     reports.cancel();
+    youtube.cancelAll();
     const state = await backups.restore(previewId);
     nativeTheme.themeSource = state.appearance;
     return state;
@@ -179,6 +223,7 @@ function openWindow() {
     event.preventDefault();
     if (closing) return;
     closing = true;
+    youtube.cancelAll();
     void operations.finally(() => {
       try {
         if (window && !window.isMaximized() && !window.isFullScreen()) {
@@ -214,6 +259,15 @@ else {
       store = new Store(app.getPath("userData"));
       backups = new Backups(store);
       reports = new Reports(store);
+      const vault = new CredentialVault(store.root, {
+        isEncryptionAvailable: () =>
+          safeStorage.isEncryptionAvailable() &&
+          (process.platform !== "linux" ||
+            safeStorage.getSelectedStorageBackend() !== "basic_text"),
+        encryptString: (value) => safeStorage.encryptString(value),
+        decryptString: (value) => safeStorage.decryptString(value),
+      });
+      youtube = new YouTube(store, vault, (url) => shell.openExternal(url));
       nativeTheme.themeSource = store.state().appearance;
       session.defaultSession.setPermissionRequestHandler(
         (_webContents, _permission, callback) => callback(false),
@@ -264,7 +318,7 @@ else {
                   void dialog.showMessageBox({
                     message: "Creator Desk — imported channel analytics",
                     detail:
-                      "Import CSV/JSON video and daily reports, explore your dashboard, and back up your data. Live YouTube connections and creator tools are planned.",
+                      "Import CSV/JSON reports, connect read-only YouTube channel totals in Settings, and back up your data. Research and AI tools are planned.",
                   });
                 },
               },
