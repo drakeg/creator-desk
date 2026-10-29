@@ -1,0 +1,55 @@
+{
+  "name": "creator-desk",
+  "version": "0.2.0",
+  "description": "A local workspace for video creators",
+  "main": "dist/main/index.cjs",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "dev": "npm run build && electron .",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "npm run build && playwright test",
+    "package": "npm run build && electron-forge package",
+    "make": "npm run build && node scripts/make.mjs",
+    "bootstrap": "node scripts/bootstrap.mjs"
+  },
+  "keywords": [],
+  "type": "module",
+  "devDependencies": {
+    "@electron-forge/cli": "8.0.1",
+    "@electron-forge/maker-zip": "8.0.1",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "electron": "45.1.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.13.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "lucide-react": "1.63.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "productName": "Creator Desk",
+  "author": "Creator Desk",
+  "private": true,
+  "packageManager": "npm@12.2.1",
+  "config": {
+    "forge": "./forge.config.cjs"
+  }
+}

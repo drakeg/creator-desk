@@ -1,0 +1,10 @@
+node_modules/
+dist/
+out/
+test-results/
+.cache/
+.env*
+*.pem
+*.p12
+*.db*
+.DS_Store
