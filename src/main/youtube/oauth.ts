@@ -86,7 +86,14 @@ export async function authorize(
   void code.catch(() => {});
   let redirect = "";
   const server = createServer({ maxHeaderSize: 8192 }, (req, res) => {
-    const url = new URL(req.url || "/", redirect);
+    let url: URL;
+    try {
+      url = new URL(req.url || "/", redirect);
+    } catch {
+      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Invalid authorization callback.");
+      return;
+    }
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Security-Policy", "default-src 'none'");

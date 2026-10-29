@@ -17,6 +17,20 @@ it("uses system-browser PKCE, ignores forged state and exchanges the accepted co
       expect(url.searchParams.get("code_challenge_method")).toBe("S256");
       challenge = url.searchParams.get("code_challenge")!;
       expect(new URL(redirect).hostname).toBe("127.0.0.1");
+      const { request } = await import("node:http");
+      const local = new URL(redirect);
+      const malformed = await new Promise<number>((resolve, reject) => {
+        const req = request(
+          { hostname: local.hostname, port: local.port, path: "http://%" },
+          (res) => {
+            res.resume();
+            resolve(res.statusCode!);
+          },
+        );
+        req.on("error", reject);
+        req.end();
+      });
+      expect(malformed).toBe(400);
       const forged = await fetch(`${redirect}?state=forged&code=bad`);
       expect(forged.status).toBe(400);
       const unicode = await fetch(
