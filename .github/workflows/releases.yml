@@ -1,0 +1,94 @@
+name: Desktop releases
+on:
+  push:
+    branches: [main]
+    paths:
+      [
+        "package.json",
+        "package-lock.json",
+        "scripts/**",
+        "src/**",
+        "assets/**",
+        "packaging/**",
+        "forge.config.cjs",
+        ".github/workflows/releases.yml",
+      ]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: mac-arm64
+          - os: macos-15-intel
+            target: mac-x64
+          - os: windows-2025
+            target: windows-x64
+          - os: ubuntu-24.04
+            target: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22.23.4"
+      - run: npm ci --ignore-scripts
+      - run: npm run bootstrap
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - name: Linux runtime dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1 libxtst6 libatk-bridge2.0-0t64 libdrm2
+      - run: npm run make
+      - run: npm run release:install
+      - name: Test installed application
+        if: runner.os != 'Linux'
+        run: npm run test:e2e
+      - name: Test installed Linux application
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:e2e
+      - run: npm run release:verify
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ matrix.target }}
+          path: release/${{ matrix.target }}/*
+          if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          path: release
+          merge-multiple: true
+      - name: Verify and publish downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          cd release
+          cat *-SHA256SUMS.txt > SHA256SUMS.txt
+          rm -- *-SHA256SUMS.txt
+          test "$(wc -l < SHA256SUMS.txt)" -eq 7
+          sha256sum -c SHA256SUMS.txt
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            test "$(gh release view "v$version" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = true
+          else
+            gh release create "v$version" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Creator Desk $version" --notes-file ../docs/release-notes.md
+          fi
+          gh release upload "v$version" ./* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "v$version" --repo "$GITHUB_REPOSITORY" --draft=false

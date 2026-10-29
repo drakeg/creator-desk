@@ -76,3 +76,7 @@ The release is ad-hoc signed for local use, not Developer ID signed or notarized
 - docs/SPEC-imports-dashboard.md and docs/VERIFICATION-0.2.0.md: scope and verification evidence.
 
 Live OAuth, competitor discovery, keyword data, project planning, AI writing, thumbnails and media tools are subsequent modules. The main-process protected-credential service is available for those modules; actual Keychain/OAuth access is not exercised by this local-import release.
+
+## Downloads
+
+Installers and portable builds are published on the [Releases page](https://github.com/drakeg/creator-desk/releases). Native release jobs cover Apple Silicon and Intel Macs, Windows x64, and Debian/Ubuntu Linux x64. All four jobs must pass installed-application tests before publication. See [release notes](docs/release-notes.md) for signing status.

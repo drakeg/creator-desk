@@ -157,7 +157,9 @@ function openWindow() {
     minHeight: 640,
     show: false,
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#141b1b" : "#f6f6f2",
-    titleBarStyle: "hiddenInset",
+    ...(process.platform === "darwin"
+      ? { titleBarStyle: "hiddenInset" as const }
+      : {}),
     webPreferences: {
       preload: join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,

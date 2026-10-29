@@ -4,13 +4,16 @@ import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json");
+const arch = process.env.CREATOR_DESK_ARCH || process.arch;
+if (!["arm64", "x64"].includes(arch))
+  throw new Error("Unsupported Mac architecture");
 const output = resolve("out/make");
 mkdirSync(output, { recursive: true });
-const destination = join(output, `Creator-Desk-${version}-mac-arm64.dmg`);
+const destination = join(output, `Creator-Desk-${version}-mac-${arch}.dmg`);
 const staging = mkdtempSync(resolve(".cache/dmg-"));
 try {
   cpSync(
-    resolve("out/Creator Desk-darwin-arm64/Creator Desk.app"),
+    resolve(`out/Creator Desk-darwin-${arch}/Creator Desk.app`),
     join(staging, "Creator Desk.app"),
     { recursive: true, verbatimSymlinks: true },
   );

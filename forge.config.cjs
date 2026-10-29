@@ -2,7 +2,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const electronVersion = require("electron/package.json").version;
-const archiveName = `electron-v${electronVersion}-darwin-arm64.zip`;
+const arch = process.env.CREATOR_DESK_ARCH || process.arch;
+const archiveName = `electron-v${electronVersion}-${process.platform}-${arch}.zip`;
 const cache = path.join(__dirname, ".cache/electron");
 const candidate = fs.existsSync(cache)
   ? fs
@@ -25,10 +26,16 @@ module.exports = {
   packagerConfig: {
     asar: true,
     electronZipDir,
-    icon: require("node:path").join(__dirname, "assets/CreatorDesk.icns"),
+    icon:
+      process.platform === "darwin"
+        ? path.join(__dirname, "assets/CreatorDesk.icns")
+        : process.platform === "win32"
+          ? path.join(__dirname, "assets/CreatorDesk.ico")
+          : undefined,
     appBundleId: "local.creatordesk.desktop",
     appCategoryType: "public.app-category.video",
-    executableName: "Creator Desk",
+    executableName:
+      process.platform === "darwin" ? "Creator Desk" : "creator-desk",
     name: "Creator Desk",
     download: {
       cacheRoot: require("node:path").join(__dirname, ".cache/electron"),
@@ -46,5 +53,10 @@ module.exports = {
       /^\/\.npmrc$/,
     ],
   },
-  makers: [{ name: "@electron-forge/maker-zip", platforms: ["darwin"] }],
+  makers: [
+    {
+      name: "@electron-forge/maker-zip",
+      platforms: ["darwin", "win32", "linux"],
+    },
+  ],
 };

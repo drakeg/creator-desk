@@ -2,12 +2,10 @@ import { backup, DatabaseSync } from "node:sqlite";
 import { createHash, randomUUID } from "node:crypto";
 import {
   closeSync,
-  constants,
   fstatSync,
   readSync,
   mkdirSync,
   mkdtempSync,
-  openSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -51,7 +49,7 @@ const manifestSchema = z
 const hash = (bytes: Buffer) =>
   createHash("sha256").update(bytes).digest("hex");
 export { atomicWrite } from "./files";
-import { atomicWrite } from "./files";
+import { atomicWrite, openRegularFile } from "./files";
 interface StagedRestore {
   directory: string;
   path: string;
@@ -110,7 +108,7 @@ export class Backups {
     this.cancel();
     let directory: string | undefined;
     try {
-      const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+      const fd = openRegularFile(path, MAX_FILE);
       let encoded: string;
       try {
         const metadata = fstatSync(fd);

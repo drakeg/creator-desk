@@ -1,4 +1,5 @@
-import { constants, openSync, closeSync, fstatSync, readSync } from "node:fs";
+import { closeSync, fstatSync, readSync } from "node:fs";
+import { openRegularFile } from "../storage/files";
 import { basename, extname } from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { CoreError } from "../../shared/contracts";
@@ -41,7 +42,7 @@ export class Reports {
       );
     let text: string;
     try {
-      const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+      const fd = openRegularFile(path, 8 * 1024 * 1024);
       try {
         const stat = fstatSync(fd);
         if (!stat.isFile() || stat.size > 8 * 1024 * 1024)

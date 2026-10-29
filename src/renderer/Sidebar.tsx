@@ -129,7 +129,7 @@ export function Sidebar({
         </button>
         <div className="sidebar-footer">
           <span>
-            DESKTOP PREVIEW <span className="version">0.2</span>
+            DESKTOP PREVIEW <span className="version">0.3</span>
           </span>
           <button
             className="icon-button"
