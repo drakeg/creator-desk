@@ -59,6 +59,7 @@ export class YouTube {
     private open: (url: string) => Promise<void>,
     private transport: Transport = (url, init) => fetch(url, init),
     private authorize: Authorize = authorizeGoogle,
+    private appClient: Client | null = null,
   ) {}
   private workspace() {
     const id = this.store.state().selectedWorkspaceId;
@@ -75,7 +76,13 @@ export class YouTube {
       .nullable()
       .safeParse(id ? this.store.setting(cacheKey(id), null) : null);
     return {
-      configured: this.vault.has(CLIENT),
+      configured: this.vault.has(CLIENT) || !!this.appClient,
+      appClientAvailable: !!this.appClient,
+      clientSource: this.vault.has(CLIENT)
+        ? "custom"
+        : this.appClient
+          ? "app"
+          : "none",
       connected: !!id && this.vault.has(key(id)),
       pending: !!id && this.attempts.has(id),
       error: id ? this.errors.get(id) || null : null,
@@ -86,6 +93,11 @@ export class YouTube {
     const client = z
       .object({ installed: desktopClient })
       .parse(input).installed;
+    this.requireConfigurable();
+    this.vault.set(CLIENT, JSON.stringify(client));
+    return this.state();
+  }
+  private requireConfigurable() {
     // Keep clients with their tokens: replacing application configuration cannot silently rebind an account.
     if (
       this.store.state().workspaces.some((w) => this.vault.has(key(w.id))) ||
@@ -95,7 +107,15 @@ export class YouTube {
         "INVALID_INPUT",
         "Disconnect YouTube in all workspaces before replacing Google application credentials.",
       );
-    this.vault.set(CLIENT, JSON.stringify(client));
+  }
+  useAppClient() {
+    if (!this.appClient)
+      throw new CoreError(
+        "INVALID_INPUT",
+        "This build does not include a Creator Desk Google client.",
+      );
+    this.requireConfigurable();
+    this.vault.delete(CLIENT);
     return this.state();
   }
   connect() {
@@ -110,13 +130,16 @@ export class YouTube {
         "INVALID_INPUT",
         "Disconnect the current account before connecting another.",
       );
-    const saved = this.vault.get(CLIENT);
-    if (!saved)
+    const saved = this.vault.has(CLIENT) ? this.vault.get(CLIENT) : null;
+    const client = saved
+      ? desktopClient.parse(JSON.parse(saved))
+      : this.appClient;
+    if (!client)
       throw new CoreError(
         "INVALID_INPUT",
-        "Import Google Desktop app credentials first.",
+        "Import Google Desktop app credentials first, or use a build configured by the publisher.",
       );
-    const client = desktopClient.parse(JSON.parse(saved));
+    this.vault.assertAvailable();
     const controller = new AbortController();
     this.attempts.set(id, controller);
     this.errors.delete(id);

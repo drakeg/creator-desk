@@ -254,3 +254,67 @@ it("saves and deduplicates API daily reports, includes them in backups and prese
   expect(new Reports(store).dashboard({}).reports).toHaveLength(1);
   expect(vault.has(`youtube-${store.state().selectedWorkspaceId}`)).toBe(true);
 });
+
+it("uses a publisher Desktop client without requiring per-user JSON import", async () => {
+  const { store, vault } = setup(async () => Response.json({}));
+  vault.delete("youtube-client");
+  const publisher = {
+    client_id: "publisher.apps.googleusercontent.com",
+    client_secret: "fixture-public-desktop",
+  };
+  let selected: unknown;
+  const youtube = new YouTube(
+    store,
+    vault,
+    async () => {},
+    fetch,
+    async (client) => {
+      selected = client;
+      return {
+        access_token: "fixture",
+        refresh_token: "fixture",
+        expiresAt: Date.now() + 3600000,
+        scopes: [],
+      };
+    },
+    publisher,
+  );
+  expect(youtube.state()).toMatchObject({
+    configured: true,
+    clientSource: "app",
+  });
+  await connect(youtube);
+  expect(selected).toEqual(publisher);
+  expect(JSON.stringify(youtube.state())).not.toMatch(
+    /client_secret|access_token|refresh_token/,
+  );
+  youtube.disconnect();
+  youtube.configure({ installed: client });
+  expect(youtube.state().clientSource).toBe("custom");
+  youtube.useAppClient();
+  expect(youtube.state().clientSource).toBe("app");
+});
+
+it("checks protected token storage before starting browser consent with an app client", () => {
+  const { store, vault } = setup(async () => Response.json({}));
+  vault.delete("youtube-client");
+  const blocked = new CredentialVault(store.root, {
+    isEncryptionAvailable: () => false,
+    encryptString: () => Buffer.alloc(0),
+    decryptString: () => "",
+  });
+  let started = false;
+  const youtube = new YouTube(
+    store,
+    blocked,
+    async () => {
+      started = true;
+    },
+    fetch,
+    undefined,
+    client,
+  );
+  expect(() => youtube.connect()).toThrow("protected storage");
+  expect(started).toBe(false);
+  expect(youtube.state().pending).toBe(false);
+});

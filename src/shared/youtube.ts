@@ -12,6 +12,8 @@ export const channelSnapshot = z
 export type ChannelSnapshot = z.infer<typeof channelSnapshot>;
 export interface YouTubeState {
   configured: boolean;
+  clientSource: "app" | "custom" | "none";
+  appClientAvailable: boolean;
   connected: boolean;
   pending: boolean;
   error: string | null;

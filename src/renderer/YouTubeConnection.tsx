@@ -1,3 +1,4 @@
+import { GoogleSetup } from "./GoogleSetup";
 import { useEffect, useState } from "react";
 import type { Result } from "../shared/contracts";
 import type { YouTubeState } from "../shared/youtube";
@@ -140,22 +141,6 @@ export function YouTubeConnection({
         </>
       )}
       <div className="youtube-actions">
-        {settings && !state?.connected && !state?.pending && (
-          <button
-            className="button secondary"
-            disabled={busy || !state}
-            onClick={() =>
-              void perform(
-                () => window.desktop.importYouTubeClient(),
-                "Google application credentials saved securely.",
-              )
-            }
-          >
-            {state?.configured
-              ? "Replace Google credentials"
-              : "Import Google credentials"}
-          </button>
-        )}
         {state?.configured &&
           !state.connected &&
           !state.pending &&
@@ -285,34 +270,31 @@ export function YouTubeConnection({
         </div>
       )}
       {settings && (
-        <details className="report-notes">
-          <summary>Set up Google access</summary>
-          <ol>
-            <li>
-              In Google Cloud, create a project and enable YouTube Data API v3
-              and YouTube Analytics API.
-            </li>
-            <li>
-              Configure Google Auth Platform consent. If the app is in testing,
-              add your Google account as a test user.
-            </li>
-            <li>
-              Create an OAuth client with application type Desktop app and
-              download its JSON credentials. Import that file here.
-            </li>
-            <li>
-              Connect in your system browser, then sync your channel. No Google
-              password is entered into Creator Desk.
-            </li>
-          </ol>
-          <p>
-            Credentials use your operating system’s protected storage and are
-            excluded from backups. Linux requires an unlocked system keyring.
-            Daily analytics requires both read-only permissions. Connections
-            from 0.4 must disconnect and reconnect to grant Analytics access.
-            Retention remains a later feature.
+        <>
+          <p className="field-note">
+            {state?.clientSource === "app"
+              ? "This build includes Creator Desk’s Google application. Click Connect YouTube; no Cloud project setup or JSON import is needed."
+              : state?.clientSource === "custom"
+                ? "Using your imported Google Desktop app configuration."
+                : "This build has no preconfigured Google application yet. Follow the linked setup below once, then connect from the app."}
           </p>
-        </details>
+          <GoogleSetup
+            state={state}
+            busy={busy}
+            onImport={() =>
+              void perform(
+                () => window.desktop.importYouTubeClient(),
+                "Google application credentials saved securely.",
+              )
+            }
+            onUseApp={() =>
+              void perform(
+                () => window.desktop.useAppGoogleClient(),
+                "Using Creator Desk’s Google configuration.",
+              )
+            }
+          />
+        </>
       )}
     </section>
   );

@@ -1,4 +1,4 @@
-# Creator Desk 0.6.0 (development)
+# Creator Desk 0.7.0 (development)
 
 An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research and AI tools remain planned.
 
@@ -10,7 +10,9 @@ AI is optional. Configure Ollama or an OpenAI-compatible model for transcript-ba
 
 ## Connect YouTube
 
-In Settings, import the JSON credentials for a Google **Desktop app** OAuth client, then choose Connect YouTube. Complete consent in your system browser and choose Sync channel. Enable YouTube Data API v3 and YouTube Analytics API in the Google project and add your account as a test user if the consent app is in testing. See [connection setup](docs/YOUTUBE-CONNECTION.md).
+In Settings, choose **Connect YouTube** if the build includes the publisher's Google configuration. Complete consent in your system browser, return automatically to the app, and sync. No Google Cloud project is needed for each user of a preconfigured build.
+
+If no application is configured, the in-app setup guide provides exact clickable/copyable links to create a project, enable both APIs, configure consent/test users, and download/import a Desktop app credentials JSON. See [connection setup](docs/YOUTUBE-CONNECTION.md). Publishers can configure the application once for everyone using [publisher-managed Google sign-in](docs/GOOGLE-PUBLISHER-SETUP.md).
 
 This stage retrieves channel views, subscriber count (which may be rounded or hidden), and video count. Last successful totals remain available offline and are separate from imported report periods. Daily analytics and upload snapshots are available from Dashboard after granting both read-only permissions. Analytics date ranges are limited to 366 days; uploads are capped at 100 with truncation disclosed. Retention remains later work.
 

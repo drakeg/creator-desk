@@ -1614,3 +1614,36 @@ dialog {
     gap: 0;
   }
 }
+
+.google-setup > p {
+  margin: 12px 0;
+  line-height: 1.7;
+}
+.google-setup li {
+  margin-top: 20px;
+}
+.google-setup li > strong {
+  display: block;
+  margin-bottom: 8px;
+}
+.google-setup a {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 8px 0;
+  color: var(--accent);
+}
+.google-setup code {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.google-setup a[aria-disabled="true"] {
+  opacity: 0.6;
+}
+.google-setup li p {
+  line-height: 1.7;
+  margin: 8px 0;
+}

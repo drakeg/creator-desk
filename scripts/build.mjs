@@ -1,7 +1,15 @@
 import { build as bundle } from "esbuild";
 import { build } from "vite";
-import { mkdir, writeFile } from "node:fs/promises";
+import { publisherClient } from "./google-client-config.mjs";
+import { mkdir, writeFile, rm } from "node:fs/promises";
 await mkdir("dist/main", { recursive: true });
+const configuredClient = publisherClient(
+  process.env.CREATOR_DESK_GOOGLE_DESKTOP_CLIENT_JSON,
+);
+const clientPath = "dist/main/google-client.json";
+if (configuredClient)
+  await writeFile(clientPath, JSON.stringify({ installed: configuredClient }));
+else await rm(clientPath, { force: true });
 await bundle({
   entryPoints: ["src/main/index.ts"],
   outfile: "dist/main/index.cjs",

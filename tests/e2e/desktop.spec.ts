@@ -352,6 +352,16 @@ test("YouTube setup rejects invalid credentials and cached channel totals surviv
   await expect(
     connection.getByText("Read-only access to your channel."),
   ).toBeVisible();
+  const beforeConnection = await page.evaluate(() =>
+    window.desktop.getYouTube(),
+  );
+  if (beforeConnection.ok && beforeConnection.value.configured)
+    await expect(
+      connection.getByRole("button", { name: "Connect YouTube", exact: true }),
+    ).toBeVisible();
+  const guide = connection.locator("details.google-setup");
+  if (!(await guide.evaluate((node) => (node as HTMLDetailsElement).open)))
+    await guide.locator("summary").click();
   const file = join(data, "invalid-client.json");
   writeFileSync(file, JSON.stringify({ web: { client_id: "wrong-client" } }));
   await app.evaluate(({ dialog }, file) => {
@@ -366,7 +376,12 @@ test("YouTube setup rejects invalid credentials and cached channel totals surviv
   await expect(connection.getByRole("alert")).toContainText("Desktop app");
   expect(await page.evaluate(() => window.desktop.getYouTube())).toMatchObject({
     ok: true,
-    value: { configured: false, connected: false },
+    value: {
+      configured: beforeConnection.ok
+        ? beforeConnection.value.configured
+        : false,
+      connected: false,
+    },
   });
   await app.close();
   const db = new DatabaseSync(join(data, "creator.db"));
@@ -705,4 +720,59 @@ test("creates an AI-suggested vertical Short with real local media processing", 
   await launch();
   await page.getByRole("button", { name: "Studio", exact: true }).click();
   await expect(page.getByLabel("Short title")).toHaveValue("A strong moment");
+});
+
+test("Google setup displays exact URLs and opens only fixed destinations in the system browser", async () => {
+  await create("Google setup");
+  await page.getByLabel("Settings", { exact: true }).click();
+  const connection = page.getByRole("region", { name: "YouTube connection" });
+  const state = await page.evaluate(() => window.desktop.getYouTube());
+  if (state.ok && state.value.configured)
+    await expect(
+      connection.getByRole("button", { name: "Connect YouTube", exact: true }),
+    ).toBeVisible();
+  const guide = connection.locator("details.google-setup");
+  if (!(await guide.evaluate((node) => (node as HTMLDetailsElement).open)))
+    await guide.locator("summary").click();
+  await app.evaluate(({ shell }) => {
+    const calls: string[] = [];
+    (globalThis as unknown as { setupURLs: string[] }).setupURLs = calls;
+    shell.openExternal = async (url) => {
+      calls.push(url);
+    };
+  });
+  const link = guide.getByRole("link", { name: /Enable YouTube Data API v3/ });
+  await expect(link).toHaveAttribute(
+    "href",
+    "https://console.cloud.google.com/apis/library/youtube.googleapis.com",
+  );
+  await expect(link.locator("code")).toHaveText(
+    "https://console.cloud.google.com/apis/library/youtube.googleapis.com",
+  );
+  await link.click();
+  await guide
+    .getByRole("link", { name: /Create a Desktop app OAuth client/ })
+    .click();
+  expect(
+    await app.evaluate(
+      () => (globalThis as unknown as { setupURLs: string[] }).setupURLs,
+    ),
+  ).toEqual([
+    "https://console.cloud.google.com/apis/library/youtube.googleapis.com",
+    "https://console.cloud.google.com/auth/clients",
+  ]);
+  const rejected = await page.evaluate(() =>
+    window.desktop.openGoogleSetup({
+      page: "https://untrusted.example" as never,
+    }),
+  );
+  expect(rejected.ok).toBe(false);
+  expect(
+    (
+      await app.evaluate(
+        () => (globalThis as unknown as { setupURLs: string[] }).setupURLs,
+      )
+    ).length,
+  ).toBe(2);
+  await page.screenshot({ path: "test-results/google-setup.png" });
 });

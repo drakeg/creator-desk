@@ -31,6 +31,9 @@ export class CredentialVault {
         "OS protected storage is unavailable. Unlock your system keyring and try again.",
       );
   }
+  assertAvailable() {
+    this.requireProtection();
+  }
   set(key: string, value: string) {
     keySchema.parse(key);
     z.string().min(1).max(64_000).parse(value);

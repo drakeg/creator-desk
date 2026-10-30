@@ -1,10 +1,9 @@
-Creator Desk 0.6 adds Shorts Studio for repurposing existing long videos.
+Creator Desk 0.7 simplifies Google setup.
 
-- Trim and preview clips, adjust vertical crop/focus or fit, and export 720×1280 H.264/AAC MP4 locally using your selected installed FFmpeg executable.
-- Import timed SRT/VTT captions or transcribe audio with a separately configured compatible speech model. Burn captions and export an SRT sidecar.
-- Choose Ollama or an OpenAI-compatible chat model to suggest clips from the transcript. Audio and transcript access are separate permissions; AI has no general computer or publishing access.
-- Review/edit every suggestion before exporting. Keys use OS protected storage. Jobs can be cancelled, and drafts persist per workspace.
+- Settings now provides exact clickable/copyable URLs for Google project creation, both YouTube APIs, app branding/audience/scopes, Desktop OAuth clients, and account connections.
+- Publishers can configure a Desktop OAuth client when building a release, so users only click Connect YouTube and approve access in their system browser. Per-user Cloud project creation and JSON import become an advanced option.
+- Builds without publisher configuration clearly show the manual guide. No real Google configuration or user tokens are included in source. Activating the default connection requires the publisher's own Google project/client and applicable Google verification.
 
-Setup: install/select FFmpeg in Studio, and optionally configure your own AI endpoints/models. No model or media executable is bundled. Shorts drafts, transcripts, and source videos are outside current database backups; preserve those files separately. See docs/SHORTS.md for limits and provider compatibility.
+See docs/GOOGLE-PUBLISHER-SETUP.md for activation. The desktop flow remains local with protected user tokens; no hosted app backend is required. Google sign-in uses the system browser.
 
 Downloads cover Apple Silicon/Intel macOS, Windows x64, and Debian/Ubuntu Linux x64. macOS builds are ad hoc signed and not notarized; Windows builds are unsigned. Checksums are included.
