@@ -399,6 +399,9 @@ test("YouTube setup rejects invalid credentials and cached channel totals surviv
 
 test("synchronizes daily analytics and uploads through the protected main-process bridge", async () => {
   await create("Live sync fixture");
+  await app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0]!.setBounds({ width: 960, height: 640 }),
+  );
   const state = await page.evaluate(() => window.desktop.getState());
   if (!state.ok) throw new Error("State unavailable");
   const id = state.value.selectedWorkspaceId!;
