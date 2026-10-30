@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { authorize, exchange, SCOPE } from "../../src/main/youtube/oauth";
+import { authorize, exchange, SCOPES } from "../../src/main/youtube/oauth";
 const client = {
   client_id: "test.apps.googleusercontent.com",
   client_secret: "fixture-secret",
@@ -13,7 +13,7 @@ it("uses system-browser PKCE, ignores forged state and exchanges the accepted co
       const url = new URL(raw);
       const redirect = url.searchParams.get("redirect_uri")!;
       expect(url.origin).toBe("https://accounts.google.com");
-      expect(url.searchParams.get("scope")).toBe(SCOPE);
+      expect(url.searchParams.get("scope")).toBe(SCOPES.join(" "));
       expect(url.searchParams.get("code_challenge_method")).toBe("S256");
       challenge = url.searchParams.get("code_challenge")!;
       expect(new URL(redirect).hostname).toBe("127.0.0.1");
@@ -53,7 +53,7 @@ it("uses system-browser PKCE, ignores forged state and exchanges the accepted co
         refresh_token: "refresh",
         expires_in: 3600,
         token_type: "Bearer",
-        scope: SCOPE,
+        scope: SCOPES.join(" "),
       });
     },
   );
@@ -113,4 +113,28 @@ it("rejects oversized remote responses without exposing their contents", async (
       async () => new Response("private".repeat(200000)),
     ),
   ).rejects.toThrow("preserved");
+});
+
+it("does not infer Analytics permission for old tokens or a refresh without new consent", async () => {
+  const { tokens, SCOPE, ANALYTICS_SCOPE } =
+    await import("../../src/main/youtube/oauth");
+  const legacy = tokens.parse({
+    access_token: "fixture",
+    refresh_token: "fixture",
+    expiresAt: 0,
+  });
+  expect(legacy.scopes).toEqual([SCOPE]);
+  const refreshed = await exchange(
+    client,
+    { refresh_token: "fixture", grant_type: "refresh_token" },
+    new AbortController().signal,
+    async () =>
+      Response.json({
+        access_token: "new",
+        expires_in: 3600,
+        token_type: "Bearer",
+      }),
+    legacy.scopes,
+  );
+  expect(refreshed.scopes).not.toContain(ANALYTICS_SCOPE);
 });

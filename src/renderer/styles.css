@@ -1454,9 +1454,6 @@ dialog {
     display: block;
     margin: 4px 0 0;
   }
-  .snapshot-pill {
-    display: none;
-  }
 }
 
 .youtube-connection {
@@ -1486,4 +1483,14 @@ dialog {
 }
 .youtube-connection li {
   margin: 8px 0;
+}
+
+.youtube-report-controls {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.youtube-report-controls h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
 }

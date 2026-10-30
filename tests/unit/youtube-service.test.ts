@@ -41,6 +41,7 @@ function setup(transport: Transport) {
       access_token: "access",
       refresh_token: "refresh",
       expiresAt: 0,
+      scopes: [],
     }),
   );
   youtube.configure({ installed: client });
@@ -124,6 +125,7 @@ it("does not save tokens from a cancelled authorization that completes late", as
     access_token: string;
     refresh_token: string;
     expiresAt: number;
+    scopes: string[];
   }) => void;
   const youtube = new YouTube(
     store,
@@ -138,7 +140,12 @@ it("does not save tokens from a cancelled authorization that completes late", as
   youtube.connect();
   expect(youtube.state().pending).toBe(true);
   youtube.cancelAll();
-  complete({ access_token: "late", refresh_token: "late", expiresAt: 0 });
+  complete({
+    access_token: "late",
+    refresh_token: "late",
+    expiresAt: 0,
+    scopes: [],
+  });
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(youtube.state().connected).toBe(false);
 });
@@ -165,4 +172,85 @@ it("validates channel snapshots during backup inspection and preserves them thro
     .prepare("UPDATE settings SET value=? WHERE key=?")
     .run(JSON.stringify({ ...youtube.state().snapshot, views: -1 }), cache);
   expect(() => checkDatabase(store.db)).toThrow();
+});
+
+it("requires renewed Analytics consent for legacy connections without destroying tokens", async () => {
+  const { youtube } = setup(async () =>
+    Response.json({
+      access_token: "fresh",
+      expires_in: 3600,
+      token_type: "Bearer",
+    }),
+  );
+  await connect(youtube);
+  await expect(
+    youtube.syncDaily({ startDate: "2026-01-01", endDate: "2026-01-02" }),
+  ).rejects.toThrow("additional read-only permission");
+  expect(youtube.state().connected).toBe(true);
+});
+
+it("saves and deduplicates API daily reports, includes them in backups and preserves reports on failure", async () => {
+  const { SCOPES } = await import("../../src/main/youtube/oauth");
+  let fail = false;
+  const { store, vault, youtube } = setup(async (url) => {
+    if (url.includes("/token"))
+      return Response.json({
+        access_token: "fresh",
+        expires_in: 3600,
+        token_type: "Bearer",
+        scope: SCOPES.join(" "),
+      });
+    if (url.includes("youtubeanalytics")) {
+      if (fail) return Response.json({ error: "denied" }, { status: 403 });
+      return Response.json({
+        columnHeaders: [
+          "day",
+          "views",
+          "estimatedMinutesWatched",
+          "subscribersGained",
+          "subscribersLost",
+        ].map((name, i) => ({
+          name,
+          columnType: i ? "METRIC" : "DIMENSION",
+          dataType: i ? "INTEGER" : "STRING",
+        })),
+        rows: [["2026-01-01", 100, 120, 5, 2]],
+      });
+    }
+    return Response.json({ items: [channel] });
+  });
+  await connect(youtube);
+  const result = await youtube.syncDaily({
+    startDate: "2026-01-01",
+    endDate: "2026-01-02",
+  });
+  const { Reports } = await import("../../src/main/imports/reports");
+  const report = new Reports(store).dashboard({ reportId: result.reportId });
+  expect(report.selected).toMatchObject({
+    source: "youtube-daily",
+    channelId: channel.id,
+    periodStart: "2026-01-01",
+    periodEnd: "2026-01-01",
+  });
+  expect(report.totals).toMatchObject({
+    views: 100,
+    watchHours: 2,
+    subscribers: 3,
+  });
+  expect(
+    (
+      await youtube.syncDaily({
+        startDate: "2026-01-01",
+        endDate: "2026-01-02",
+      })
+    ).duplicate,
+  ).toBe(true);
+  const { checkDatabase } = await import("../../src/main/storage/schema");
+  expect(() => checkDatabase(store.db)).not.toThrow();
+  fail = true;
+  await expect(
+    youtube.syncDaily({ startDate: "2026-01-01", endDate: "2026-01-02" }),
+  ).rejects.toThrow("Google denied");
+  expect(new Reports(store).dashboard({}).reports).toHaveLength(1);
+  expect(vault.has(`youtube-${store.state().selectedWorkspaceId}`)).toBe(true);
 });

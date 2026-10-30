@@ -1,12 +1,12 @@
-# Creator Desk 0.4.0 (development)
+# Creator Desk 0.5.0 (development)
 
 An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research and AI tools remain planned.
 
 ## Connect YouTube
 
-In Settings, import the JSON credentials for a Google **Desktop app** OAuth client, then choose Connect YouTube. Complete consent in your system browser and choose Sync channel. Enable YouTube Data API v3 in the Google project and add your account as a test user if the consent app is in testing. See [connection setup](docs/YOUTUBE-CONNECTION.md).
+In Settings, import the JSON credentials for a Google **Desktop app** OAuth client, then choose Connect YouTube. Complete consent in your system browser and choose Sync channel. Enable YouTube Data API v3 and YouTube Analytics API in the Google project and add your account as a test user if the consent app is in testing. See [connection setup](docs/YOUTUBE-CONNECTION.md).
 
-This stage retrieves channel views, subscriber count (which may be rounded or hidden), and video count. Last successful totals remain available offline and are separate from imported report periods. Daily analytics, watch time, retention, and upload synchronization remain later work.
+This stage retrieves channel views, subscriber count (which may be rounded or hidden), and video count. Last successful totals remain available offline and are separate from imported report periods. Daily analytics and upload snapshots are available from Dashboard after granting both read-only permissions. Analytics date ranges are limited to 366 days; uploads are capped at 100 with truncation disclosed. Retention remains later work.
 
 ## Working features
 
@@ -81,7 +81,7 @@ The release is ad-hoc signed for local use, not Developer ID signed or notarized
 - tests: real SQLite/fixture tests and packaged Electron interaction checks.
 - docs/SPEC-imports-dashboard.md and docs/VERIFICATION-0.2.0.md: scope and verification evidence.
 
-Detailed YouTube analytics, competitor discovery, keyword data, project planning, AI writing, thumbnails and media tools are subsequent modules. OAuth protocol and API behavior are tested with controlled fixtures; completing real Google consent requires your own Desktop app client.
+Retention, competitor discovery, keyword data, project planning, AI writing, thumbnails and media tools are subsequent modules. OAuth protocol and API behavior are tested with controlled fixtures; completing real Google consent requires your own Desktop app client.
 
 ## Downloads
 

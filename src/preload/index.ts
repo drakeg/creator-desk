@@ -14,6 +14,9 @@ const core: DesktopCore = {
   connectYouTube: () => ipcRenderer.invoke("core:connectYouTube"),
   cancelYouTube: () => ipcRenderer.invoke("core:cancelYouTube"),
   disconnectYouTube: () => ipcRenderer.invoke("core:disconnectYouTube"),
+  syncYouTubeDaily: (input) =>
+    ipcRenderer.invoke("core:syncYouTubeDaily", input),
+  syncYouTubeUploads: () => ipcRenderer.invoke("core:syncYouTubeUploads"),
   syncYouTube: () => ipcRenderer.invoke("core:syncYouTube"),
   getState: () => ipcRenderer.invoke("core:getState"),
   createWorkspace: (input) => ipcRenderer.invoke("core:createWorkspace", input),
