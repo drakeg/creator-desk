@@ -1,6 +1,25 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { DesktopCore } from "../shared/contracts";
 const core: DesktopCore = {
+  shorts: Object.freeze({
+    get: () => ipcRenderer.invoke("core:shortsGet"),
+    chooseVideo: () => ipcRenderer.invoke("core:shortsChooseVideo"),
+    chooseFFmpeg: () => ipcRenderer.invoke("core:shortsChooseFFmpeg"),
+    importTranscript: () => ipcRenderer.invoke("core:shortsImportTranscript"),
+    saveAI: (input: Parameters<DesktopCore["shorts"]["saveAI"]>[0]) =>
+      ipcRenderer.invoke("core:shortsSaveAI", input),
+    removeAI: (input: { purpose: import("../shared/shorts").AiPurpose }) =>
+      ipcRenderer.invoke("core:shortsRemoveAI", input),
+    testAI: (input: { purpose: import("../shared/shorts").AiPurpose }) =>
+      ipcRenderer.invoke("core:shortsTestAI", input),
+    transcribe: () => ipcRenderer.invoke("core:shortsTranscribe"),
+    suggest: () => ipcRenderer.invoke("core:shortsSuggest"),
+    saveDraft: (input: import("../shared/shorts").Clip) =>
+      ipcRenderer.invoke("core:shortsSaveDraft", input),
+    exportClip: (input: import("../shared/shorts").Clip) =>
+      ipcRenderer.invoke("core:shortsExport", input),
+    cancel: () => ipcRenderer.invoke("core:shortsCancel"),
+  }),
   runtime: Object.freeze({
     sandboxed: process.sandboxed === true,
     contextIsolated: process.contextIsolated,

@@ -146,7 +146,10 @@ export function Settings({ state, busy, perform, restore }: Props) {
           <div className="setting-row">
             <div>
               <h3>Export a backup</h3>
-              <p>All workspaces and settings. Credentials are excluded.</p>
+              <p>
+                Workspace database and settings. Credentials, source videos, and
+                Shorts drafts are excluded.
+              </p>
             </div>
             <button
               className="button secondary"

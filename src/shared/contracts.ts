@@ -56,6 +56,7 @@ export type Result<T> =
   | { ok: true; value: T }
   | { ok: false; error: { code: CoreErrorCode; message: string } };
 export interface DesktopCore {
+  readonly shorts: import("./shorts").ShortsAPI;
   readonly runtime: { sandboxed: boolean; contextIsolated: boolean };
   getState(): Promise<Result<CoreState>>;
   getYouTube(): Promise<Result<YouTubeState>>;

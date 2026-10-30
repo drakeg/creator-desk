@@ -13,6 +13,7 @@ import type { CoreState, RestorePreview, Result } from "../shared/contracts";
 import { Modal } from "./Dialog";
 import { Sidebar } from "./Sidebar";
 import { Settings } from "./Settings";
+import { ShortsStudio } from "./ShortsStudio";
 import { Dashboard } from "./Dashboard";
 import { Overview, type Destination } from "./Overview";
 export default function App() {
@@ -244,6 +245,8 @@ export default function App() {
               perform={perform}
               restore={() => void restore()}
             />
+          ) : page === "Studio" ? (
+            <ShortsStudio key={selected?.id} />
           ) : page === "Dashboard" ? (
             <Dashboard key={selected?.id} />
           ) : (
@@ -334,7 +337,8 @@ export default function App() {
           <p className="dialog-copy">
             This replaces <strong>all local workspaces and settings</strong>{" "}
             with the backup from {new Date(preview.createdAt).toLocaleString()}.
-            A recovery backup will be saved first. Credentials are not replaced.
+            A recovery backup will be saved first. Credentials, source videos,
+            and Shorts drafts are not replaced.
           </p>
           <div className="restore-workspaces">
             <span className="eyebrow">WORKSPACES IN THIS BACKUP</span>

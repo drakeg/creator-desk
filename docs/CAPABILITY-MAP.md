@@ -56,4 +56,4 @@ Each stage should deliver working workflows. Unimplemented features must be mark
 
 ## Current implementation
 
-See SPEC-desktop-core.md, SPEC-imports-dashboard.md, README.md and VERIFICATION-0.2.0.md. See YOUTUBE-CONNECTION.md for desktop OAuth and manual channel-total synchronization. Daily reports and upload snapshots now feed the existing viewer. Next: report management and project planning.
+See SPEC-desktop-core.md, SPEC-imports-dashboard.md, README.md and VERIFICATION-0.2.0.md. See YOUTUBE-CONNECTION.md for desktop OAuth and manual channel-total synchronization. Daily reports and upload snapshots now feed the existing viewer. Version 0.6 prioritizes Shorts creation: local trim/reframe/export, timed captions, optional speech transcription, and clip suggestions from user-selected AI including Ollama. Next: polish Shorts and extend report/project management.
