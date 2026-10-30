@@ -1,5 +1,6 @@
 import {
   app,
+  protocol,
   BrowserWindow,
   dialog,
   ipcMain,
@@ -22,12 +23,26 @@ import { closeSync, readSync } from "node:fs";
 import { openRegularFile } from "./storage/files";
 import { CredentialVault } from "./credentials";
 import { dailySyncInput } from "../shared/youtube";
+import { AI } from "./shorts/ai";
+import { Shorts } from "./shorts/service";
+import { registerShorts } from "./shorts/ipc";
 import { YouTube } from "./youtube/service";
 import { Store } from "./storage/store";
 import { Backups } from "./storage/backups";
 import { Reports } from "./imports/reports";
 import { commitImportInput, dashboardInput } from "../shared/analytics";
 
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "creator-media",
+    privileges: {
+      standard: true,
+      secure: true,
+      stream: true,
+      supportFetchAPI: true,
+    },
+  },
+]);
 app.setName("Creator Desk");
 const customData = process.env.CREATOR_DESK_DATA_DIR;
 if (customData) {
@@ -41,6 +56,7 @@ let store: Store;
 let backups: Backups;
 let reports: Reports;
 let youtube: YouTube;
+let shorts: Shorts;
 const rendererPath = join(__dirname, "../renderer/index.html");
 const rendererURL = pathToFileURL(rendererPath).href;
 let operations: Promise<unknown> = Promise.resolve();
@@ -76,6 +92,7 @@ function handle(
   });
 }
 function configureIPC() {
+  registerShorts(handle, shorts, () => window!);
   handle("getYouTube", z.undefined(), () => youtube.state());
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());
@@ -184,6 +201,8 @@ function configureIPC() {
     const { previewId } = restoreInput.parse(input);
     reports.cancel();
     youtube.cancelAll();
+    await shorts.close();
+    shorts.reset();
     const state = await backups.restore(previewId);
     nativeTheme.themeSource = state.appearance;
     return state;
@@ -229,7 +248,8 @@ function openWindow() {
     if (closing) return;
     closing = true;
     youtube.cancelAll();
-    void operations.finally(() => {
+    void operations.finally(async () => {
+      await shorts.close();
       try {
         if (window && !window.isMaximized() && !window.isFullScreen()) {
           const { width, height } = window.getBounds();
@@ -273,6 +293,8 @@ else {
         decryptString: (value) => safeStorage.decryptString(value),
       });
       youtube = new YouTube(store, vault, (url) => shell.openExternal(url));
+      shorts = new Shorts(store, new AI(store, vault));
+      protocol.handle("creator-media", (request) => shorts.response(request));
       nativeTheme.themeSource = store.state().appearance;
       session.defaultSession.setPermissionRequestHandler(
         (_webContents, _permission, callback) => callback(false),
@@ -282,7 +304,8 @@ else {
         callback({
           cancel:
             !details.url.startsWith("file:") &&
-            !details.url.startsWith("devtools:"),
+            !details.url.startsWith("devtools:") &&
+            !details.url.startsWith("creator-media:"),
         }),
       );
       configureIPC();

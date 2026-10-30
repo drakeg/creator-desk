@@ -1,9 +1,10 @@
-Creator Desk 0.5 adds manual daily YouTube analytics and upload synchronization.
+Creator Desk 0.6 adds Shorts Studio for repurposing existing long videos.
 
-- Save up to 366 days of views, estimated watch hours, and net subscriber changes as a dated report. Missing days remain absent; delayed data is disclosed.
-- Save up to 100 uploads with titles, publication dates, and cumulative view counts. Unavailable videos and truncation are disclosed.
-- Review synced data in the existing sortable, searchable report viewer. Source/channel labels, offline persistence, deduplication, and backups apply to API snapshots too.
+- Trim and preview clips, adjust vertical crop/focus or fit, and export 720×1280 H.264/AAC MP4 locally using your selected installed FFmpeg executable.
+- Import timed SRT/VTT captions or transcribe audio with a separately configured compatible speech model. Burn captions and export an SRT sidecar.
+- Choose Ollama or an OpenAI-compatible chat model to suggest clips from the transcript. Audio and transcript access are separate permissions; AI has no general computer or publishing access.
+- Review/edit every suggestion before exporting. Keys use OS protected storage. Jobs can be cancelled, and drafts persist per workspace.
 
-Enable YouTube Analytics API alongside YouTube Data API v3. Connections from 0.4 must disconnect and reconnect to grant the additional read-only Analytics permission. Real Google consent requires your own configured Desktop OAuth client. Tokens stay in OS protected storage and out of backups.
+Setup: install/select FFmpeg in Studio, and optionally configure your own AI endpoints/models. No model or media executable is bundled. Shorts drafts, transcripts, and source videos are outside current database backups; preserve those files separately. See docs/SHORTS.md for limits and provider compatibility.
 
-Downloads: Apple Silicon and Intel macOS DMG/ZIP, Windows x64 installer/ZIP, and Debian/Ubuntu Linux x64 DEB. Checksums are included. macOS builds are ad hoc signed and not notarized; Windows builds are unsigned.
+Downloads cover Apple Silicon/Intel macOS, Windows x64, and Debian/Ubuntu Linux x64. macOS builds are ad hoc signed and not notarized; Windows builds are unsigned. Checksums are included.

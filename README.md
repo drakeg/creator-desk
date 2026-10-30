@@ -1,6 +1,12 @@
-# Creator Desk 0.5.0 (development)
+# Creator Desk 0.6.0 (development)
 
 An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research and AI tools remain planned.
+
+## Create Shorts
+
+Open **Studio**. Select an installed FFmpeg executable, then choose an MP4, MOV, M4V, or WebM source. Trim 1–180 seconds, adjust vertical framing, and export a 720×1280 H.264/AAC MP4. Timed captions can be burned into the video and also export as a uniquely named SRT sidecar. Your original video is never modified.
+
+AI is optional. Configure Ollama or an OpenAI-compatible model for transcript-based clip suggestions. Import SRT/VTT captions for an entirely local Ollama workflow, or separately configure a compatible speech endpoint to transcribe extracted audio. Providers receive only the data you explicitly permit, when you start the corresponding action. No AI receives general filesystem, computer-control, or publishing access. See [Shorts setup and limits](docs/SHORTS.md).
 
 ## Connect YouTube
 
@@ -69,7 +75,7 @@ npm run make -- --arch=arm64
 
 Dependency scripts stay disabled in .npmrc. Bootstrap runs only the reviewed Electron downloader. Packaging reuses the cached archive after verifying its published checksum, when available. The Mac bundle is built with Electron Forge and uses Apple's disk-image tools for the DMG. A normal desktop execution environment is required; REA process capture ran this session's GUI tests and disk-image verification.
 
-The release is ad-hoc signed for local use, not Developer ID signed or notarized. Tested on macOS 27.0.1 arm64. The embedded runtime declares a macOS 13 minimum, but earlier OS versions and Intel were not verified. No automatic updater or App Store release is configured. Tests use isolated data roots and synthetic fixtures; native file-picker results are replaced with fixture paths in automation.
+The release is ad-hoc signed for local use, not Developer ID signed or notarized. Native CI verifies installed builds on macOS 15 arm64/x64, Windows x64, and Ubuntu x64. Local desktop tests also run on macOS arm64. The embedded runtime declares a macOS 13 minimum; that minimum OS version is not separately verified. No automatic updater or App Store release is configured. Tests use isolated data roots and synthetic fixtures; native file-picker results are replaced with fixture paths in automation.
 
 ## Source layout
 

@@ -43,6 +43,8 @@ jobs:
           node-version: "22.23.4"
       - run: npm ci --ignore-scripts
       - run: npm run bootstrap
+      - name: Prepare checksum-verified synthetic media test tool
+        run: node scripts/test-media-tools.mjs
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test

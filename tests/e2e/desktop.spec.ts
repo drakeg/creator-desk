@@ -546,3 +546,163 @@ test("synchronizes daily analytics and uploads through the protected main-proces
     page.getByText("YouTube API snapshot", { exact: true }),
   ).toBeVisible();
 });
+
+test("creates an AI-suggested vertical Short with real local media processing", async () => {
+  await create("Shorts workspace");
+  const { execFileSync } = await import("node:child_process");
+  const ffmpeg =
+    process.env.CREATOR_DESK_TEST_FFMPEG ||
+    resolve(
+      ".cache/tools",
+      process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
+    );
+  const source = join(data, "source.mp4");
+  const output = join(data, "finished-short.mp4");
+  execFileSync(ffmpeg, [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    "testsrc2=size=640x360:rate=30",
+    "-f",
+    "lavfi",
+    "-i",
+    "sine=frequency=440:sample_rate=16000",
+    "-t",
+    "6",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    source,
+  ]);
+  const { createHash } = await import("node:crypto");
+  const before = createHash("sha256")
+    .update(readFileSync(source))
+    .digest("hex");
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+  async function choose(path: string) {
+    await app.evaluate(({ dialog }, path) => {
+      dialog.showOpenDialog = async () => ({
+        canceled: false,
+        filePaths: [path],
+      });
+    }, path);
+  }
+  await choose(ffmpeg);
+  await page.getByRole("button", { name: "Choose installed FFmpeg" }).click();
+  await choose(source);
+  await page.getByRole("button", { name: "Choose source video" }).click();
+  await expect(page.getByLabel("Short title")).toBeVisible();
+  await expect
+    .poll(() =>
+      page.locator("video").evaluate((v) => (v as HTMLVideoElement).readyState),
+    )
+    .toBeGreaterThanOrEqual(1);
+  await app.evaluate(() => {
+    globalThis.fetch = async (raw, init) => {
+      const url = String(raw);
+      if (url.endsWith("/audio/transcriptions")) {
+        const file = (init!.body as FormData).get("file") as Blob;
+        if (!file || file.size < 1000)
+          throw new Error("Missing extracted audio");
+        return Response.json({
+          segments: [
+            { start: 1, end: 3, text: "An interesting opening." },
+            { start: 3, end: 5, text: "A satisfying payoff." },
+          ],
+        });
+      }
+      if (url.endsWith("/api/chat"))
+        return Response.json({
+          message: {
+            content: JSON.stringify({
+              clips: [
+                {
+                  startCue: 0,
+                  endCue: 1,
+                  title: "A strong moment",
+                  reason: "An opening and payoff",
+                  score: 90,
+                },
+              ],
+            }),
+          },
+        });
+      if (url.endsWith("/api/tags"))
+        return Response.json({ models: [{ name: "fixture-local" }] });
+      throw new Error("Unexpected test endpoint");
+    };
+  });
+  await page.evaluate(async () => {
+    const a = await window.desktop.shorts.saveAI({
+      config: {
+        purpose: "clips",
+        kind: "ollama",
+        baseURL: "http://localhost:11434",
+        model: "fixture-local",
+        allowed: true,
+      },
+      apiKey: "",
+    });
+    if (!a.ok) throw new Error(a.error.message);
+    const b = await window.desktop.shorts.saveAI({
+      config: {
+        purpose: "speech",
+        kind: "compatible",
+        baseURL: "http://localhost:8080/v1",
+        model: "fixture-speech",
+        allowed: true,
+      },
+      apiKey: "",
+    });
+    if (!b.ok) throw new Error(b.error.message);
+  });
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Transcribe audio with selected AI" })
+    .click();
+  await expect(page.getByText(/2 timed cues/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Suggest clips with selected AI" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Use suggestion 1" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Use suggestion 1" }).click();
+  await expect(page.getByLabel("Short title")).toHaveValue("A strong moment");
+  await page.getByLabel("Burn captions into video").check();
+  await app.evaluate(({ dialog }, path) => {
+    dialog.showSaveDialog = async () => ({ canceled: false, filePath: path });
+  }, output);
+  await page.getByRole("button", { name: "Export vertical MP4" }).click();
+  await expect(page.getByText(/Exported finished-short.mp4/)).toBeVisible({
+    timeout: 45000,
+  });
+  const probe = execFileSync(
+    ffmpeg,
+    ["-hide_banner", "-i", output, "-frames:v", "1", "-f", "null", "-"],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  );
+  void probe;
+  const { spawnSync } = await import("node:child_process");
+  const metadata = spawnSync(ffmpeg, ["-hide_banner", "-i", output], {
+    encoding: "utf8",
+  }).stderr;
+  expect(metadata).toContain("720x1280");
+  expect(metadata).toContain("00:00:04.");
+  expect(createHash("sha256").update(readFileSync(source)).digest("hex")).toBe(
+    before,
+  );
+  await page.screenshot({ path: "test-results/shorts-studio.png" });
+  await app.close();
+  await launch();
+  await page.getByRole("button", { name: "Studio", exact: true }).click();
+  await expect(page.getByLabel("Short title")).toHaveValue("A strong moment");
+});
