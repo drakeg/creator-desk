@@ -1,6 +1,12 @@
-# Creator Desk 0.2.0
+# Creator Desk 0.4.0 (development)
 
-An installable, local macOS app for importing and exploring creator analytics. This stage adds useful channel reporting to the desktop foundation; live Google/YouTube synchronization and research/AI tools remain planned.
+An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research and AI tools remain planned.
+
+## Connect YouTube
+
+In Settings, import the JSON credentials for a Google **Desktop app** OAuth client, then choose Connect YouTube. Complete consent in your system browser and choose Sync channel. Enable YouTube Data API v3 in the Google project and add your account as a test user if the consent app is in testing. See [connection setup](docs/YOUTUBE-CONNECTION.md).
+
+This stage retrieves channel views, subscriber count (which may be rounded or hidden), and video count. Last successful totals remain available offline and are separate from imported report periods. Daily analytics, watch time, retention, and upload synchronization remain later work.
 
 ## Working features
 
@@ -75,7 +81,7 @@ The release is ad-hoc signed for local use, not Developer ID signed or notarized
 - tests: real SQLite/fixture tests and packaged Electron interaction checks.
 - docs/SPEC-imports-dashboard.md and docs/VERIFICATION-0.2.0.md: scope and verification evidence.
 
-Live OAuth, competitor discovery, keyword data, project planning, AI writing, thumbnails and media tools are subsequent modules. The main-process protected-credential service is available for those modules; actual Keychain/OAuth access is not exercised by this local-import release.
+Detailed YouTube analytics, competitor discovery, keyword data, project planning, AI writing, thumbnails and media tools are subsequent modules. OAuth protocol and API behavior are tested with controlled fixtures; completing real Google consent requires your own Desktop app client.
 
 ## Downloads
 

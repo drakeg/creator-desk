@@ -5,6 +5,7 @@ import type {
   Dashboard,
 } from "./analytics";
 import { z } from "zod";
+import type { YouTubeState } from "./youtube";
 export const workspaceName = z
   .string()
   .trim()
@@ -49,13 +50,20 @@ export type CoreErrorCode =
   | "STORAGE_UNAVAILABLE"
   | "UNSUPPORTED_VERSION"
   | "INVALID_BACKUP"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "REMOTE_ERROR";
 export type Result<T> =
   | { ok: true; value: T }
   | { ok: false; error: { code: CoreErrorCode; message: string } };
 export interface DesktopCore {
   readonly runtime: { sandboxed: boolean; contextIsolated: boolean };
   getState(): Promise<Result<CoreState>>;
+  getYouTube(): Promise<Result<YouTubeState>>;
+  importYouTubeClient(): Promise<Result<YouTubeState | null>>;
+  connectYouTube(): Promise<Result<YouTubeState>>;
+  cancelYouTube(): Promise<Result<YouTubeState>>;
+  disconnectYouTube(): Promise<Result<YouTubeState>>;
+  syncYouTube(): Promise<Result<YouTubeState>>;
   inspectImport(): Promise<Result<ImportPreview | null>>;
   commitImport(
     input: CommitImportInput,

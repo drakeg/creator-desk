@@ -28,7 +28,7 @@ export class CredentialVault {
     if (!this.protector.isEncryptionAvailable())
       throw new CoreError(
         "STORAGE_UNAVAILABLE",
-        "macOS protected storage is unavailable. Unlock your login Keychain and try again.",
+        "OS protected storage is unavailable. Unlock your system keyring and try again.",
       );
   }
   set(key: string, value: string) {
@@ -37,6 +37,16 @@ export class CredentialVault {
     this.requireProtection();
     const records = this.records();
     records[key] = this.protector.encryptString(value).toString("base64");
+    atomicWrite(this.path, JSON.stringify(records));
+  }
+  has(key: string) {
+    keySchema.parse(key);
+    return Boolean(this.records()[key]);
+  }
+  delete(key: string) {
+    keySchema.parse(key);
+    const records = this.records();
+    delete records[key];
     atomicWrite(this.path, JSON.stringify(records));
   }
   get(key: string) {

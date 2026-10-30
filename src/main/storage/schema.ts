@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
+import { channelSnapshot } from "../../shared/youtube";
 import { appearance, CoreError } from "../../shared/contracts";
 import { parsedReport, reportSummary } from "../../shared/analytics";
 export const CREATE_REPORTS = `CREATE TABLE reports (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(id), metadata TEXT NOT NULL, payload TEXT NOT NULL, fingerprint TEXT NOT NULL) STRICT;`;
@@ -66,6 +67,15 @@ export function checkDatabase(db: DatabaseSync) {
     )
       throw new CoreError("INVALID_BACKUP", "Invalid backup settings.");
     const value: unknown = JSON.parse(s.value);
+    if (s.key.startsWith("youtube-snapshot-")) {
+      const workspaceId = s.key.slice("youtube-snapshot-".length);
+      if (!workspaces.some((w) => w.id === workspaceId))
+        throw new CoreError(
+          "INVALID_BACKUP",
+          "A YouTube snapshot has no workspace.",
+        );
+      channelSnapshot.parse(value);
+    }
     if (s.key === "appearance") appearance.parse(value);
     if (s.key === "sidebarCollapsed") z.boolean().parse(value);
     if (

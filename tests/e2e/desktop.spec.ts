@@ -5,6 +5,7 @@ import {
   type ElectronApplication,
   type Page,
 } from "@playwright/test";
+import { DatabaseSync } from "node:sqlite";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import {
@@ -342,4 +343,56 @@ test("imports real CSV snapshots, explores metrics and preserves data across res
   await expect(page.getByLabel("Saved report").locator("option")).toHaveCount(
     2,
   );
+});
+
+test("YouTube setup rejects invalid credentials and cached channel totals survive restart", async () => {
+  await create("YouTube workspace");
+  await page.getByLabel("Settings", { exact: true }).click();
+  const connection = page.getByRole("region", { name: "YouTube connection" });
+  await expect(
+    connection.getByText("Read-only access to your channel."),
+  ).toBeVisible();
+  const file = join(data, "invalid-client.json");
+  writeFileSync(file, JSON.stringify({ web: { client_id: "wrong-client" } }));
+  await app.evaluate(({ dialog }, file) => {
+    dialog.showOpenDialog = async () => ({
+      canceled: false,
+      filePaths: [file],
+    });
+  }, file);
+  await connection
+    .getByRole("button", { name: "Import Google credentials" })
+    .click();
+  await expect(connection.getByRole("alert")).toContainText("Desktop app");
+  expect(await page.evaluate(() => window.desktop.getYouTube())).toMatchObject({
+    ok: true,
+    value: { configured: false, connected: false },
+  });
+  await app.close();
+  const db = new DatabaseSync(join(data, "creator.db"));
+  const id = JSON.parse(
+    String(
+      db
+        .prepare("SELECT value FROM settings WHERE key='selectedWorkspaceId'")
+        .get()!.value,
+    ),
+  );
+  db.prepare("INSERT INTO settings VALUES(?,?)").run(
+    `youtube-snapshot-${id}`,
+    JSON.stringify({
+      id: "UC1234567890123456789012",
+      title: "Cached channel fixture",
+      views: 12345,
+      subscribers: null,
+      videos: 7,
+      syncedAt: "2026-10-28T12:00:00.000Z",
+    }),
+  );
+  db.close();
+  await launch();
+  const cached = page.getByRole("region", { name: "YouTube connection" });
+  await expect(cached.getByText("Cached channel fixture")).toBeVisible();
+  await expect(cached.getByText("12,345", { exact: true })).toBeVisible();
+  await expect(cached.getByText("Unavailable", { exact: true })).toBeVisible();
+  await page.screenshot({ path: "test-results/youtube-cache.png" });
 });
