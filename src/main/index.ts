@@ -21,6 +21,7 @@ import {
 import { closeSync, readSync } from "node:fs";
 import { openRegularFile } from "./storage/files";
 import { CredentialVault } from "./credentials";
+import { dailySyncInput } from "../shared/youtube";
 import { YouTube } from "./youtube/service";
 import { Store } from "./storage/store";
 import { Backups } from "./storage/backups";
@@ -79,6 +80,10 @@ function configureIPC() {
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());
   handle("disconnectYouTube", z.undefined(), () => youtube.disconnect());
+  handle("syncYouTubeDaily", dailySyncInput, (input) =>
+    youtube.syncDaily(dailySyncInput.parse(input)),
+  );
+  handle("syncYouTubeUploads", z.undefined(), () => youtube.syncUploads());
   handle("syncYouTube", z.undefined(), () => youtube.sync());
   handle("importYouTubeClient", z.undefined(), async () => {
     const result = await dialog.showOpenDialog(window!, {

@@ -13,12 +13,12 @@ export function ReportChart({
         <p>
           {daily
             ? "No daily records match this range."
-            : "Import a daily report to see views over time."}
+            : "Choose a daily report to see views over time."}
         </p>
         <span>
           {daily
             ? "Try another date range or clear the search."
-            : "A video table contains totals for its whole reporting period."}
+            : "Video snapshots contain period totals or cumulative views, as labeled above."}
         </span>
       </div>
     );

@@ -4,6 +4,9 @@ import { z } from "zod";
 import { CoreError } from "../../shared/contracts";
 import { googleJSON, type Transport } from "./http";
 export const SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
+export const ANALYTICS_SCOPE =
+  "https://www.googleapis.com/auth/yt-analytics.readonly";
+export const SCOPES = [SCOPE, ANALYTICS_SCOPE];
 export const desktopClient = z.object({
   client_id: z
     .string()
@@ -15,6 +18,7 @@ export const tokens = z.object({
   access_token: z.string().min(1).max(10000),
   refresh_token: z.string().min(1).max(10000),
   expiresAt: z.number().finite(),
+  scopes: z.array(z.string().max(250)).max(50).default([SCOPE]),
 });
 export type Tokens = z.infer<typeof tokens>;
 export type Client = z.infer<typeof desktopClient>;
@@ -30,6 +34,7 @@ export async function exchange(
   fields: Record<string, string>,
   signal: AbortSignal,
   transport?: Transport,
+  grantedScopes: string[] = [SCOPE],
 ): Promise<Tokens> {
   const parsed = responseToken.safeParse(
     await googleJSON(
@@ -64,6 +69,7 @@ export async function exchange(
     ...result,
     refresh_token: refresh,
     expiresAt: Date.now() + result.expires_in * 1000,
+    scopes: result.scope ? result.scope.split(" ") : grantedScopes,
   });
 }
 export async function authorize(
@@ -157,7 +163,7 @@ export async function authorize(
       client_id: client.client_id,
       redirect_uri: redirect,
       response_type: "code",
-      scope: SCOPE,
+      scope: SCOPES.join(" "),
       state,
       code_challenge: challenge,
       code_challenge_method: "S256",
@@ -167,7 +173,7 @@ export async function authorize(
     if (signal.aborted) abort();
     else await open(url.href);
     const value = await code;
-    return await exchange(
+    const result = await exchange(
       client,
       {
         code: value,
@@ -177,7 +183,14 @@ export async function authorize(
       },
       signal,
       transport,
+      SCOPES,
     );
+    if (!SCOPES.every((scope) => result.scopes.includes(scope)))
+      throw new CoreError(
+        "REMOTE_ERROR",
+        "Grant both read-only YouTube and Analytics permissions when reconnecting.",
+      );
+    return result;
   } finally {
     clearTimeout(timer);
     signal.removeEventListener("abort", abort);

@@ -1,7 +1,9 @@
-Creator Desk 0.4 adds optional read-only YouTube connections alongside local report imports.
+Creator Desk 0.5 adds manual daily YouTube analytics and upload synchronization.
 
-In Settings, import a Google Desktop app credentials JSON, connect in your system browser, and manually sync channel views, subscriber count, and video count. Last successful totals remain available offline. Tokens use OS protected storage and are excluded from backups. Detailed analytics still use imports. Real Google consent requires your own configured project and Desktop OAuth client.
+- Save up to 366 days of views, estimated watch hours, and net subscriber changes as a dated report. Missing days remain absent; delayed data is disclosed.
+- Save up to 100 uploads with titles, publication dates, and cumulative view counts. Unavailable videos and truncation are disclosed.
+- Review synced data in the existing sortable, searchable report viewer. Source/channel labels, offline persistence, deduplication, and backups apply to API snapshots too.
 
-Downloads: mac-arm64 for Apple Silicon Macs; mac-x64 for Intel Macs; windows-x64-Setup.exe for Windows (portable ZIP also available); linux-x64.deb for Debian/Ubuntu x64. SHA256SUMS.txt contains download checksums. Every platform passes static checks, unit tests, and installed-application tests before publication.
+Enable YouTube Analytics API alongside YouTube Data API v3. Connections from 0.4 must disconnect and reconnect to grant the additional read-only Analytics permission. Real Google consent requires your own configured Desktop OAuth client. Tokens stay in OS protected storage and out of backups.
 
-macOS builds are ad hoc signed and are not notarized. Windows builds are unsigned. Operating systems may display publisher warnings.
+Downloads: Apple Silicon and Intel macOS DMG/ZIP, Windows x64 installer/ZIP, and Debian/Ubuntu Linux x64 DEB. Checksums are included. macOS builds are ad hoc signed and not notarized; Windows builds are unsigned.

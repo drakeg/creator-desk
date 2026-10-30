@@ -5,7 +5,7 @@ import type {
   Dashboard,
 } from "./analytics";
 import { z } from "zod";
-import type { YouTubeState } from "./youtube";
+import type { DailySyncInput, SyncReportResult, YouTubeState } from "./youtube";
 export const workspaceName = z
   .string()
   .trim()
@@ -64,6 +64,8 @@ export interface DesktopCore {
   cancelYouTube(): Promise<Result<YouTubeState>>;
   disconnectYouTube(): Promise<Result<YouTubeState>>;
   syncYouTube(): Promise<Result<YouTubeState>>;
+  syncYouTubeDaily(input: DailySyncInput): Promise<Result<SyncReportResult>>;
+  syncYouTubeUploads(): Promise<Result<SyncReportResult>>;
   inspectImport(): Promise<Result<ImportPreview | null>>;
   commitImport(
     input: CommitImportInput,

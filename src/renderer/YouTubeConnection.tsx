@@ -3,9 +3,16 @@ import type { Result } from "../shared/contracts";
 import type { YouTubeState } from "../shared/youtube";
 export function YouTubeConnection({
   settings = false,
+  onReport,
 }: {
   settings?: boolean;
+  onReport?: (reportId: string) => void;
 }) {
+  const end = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  const [startDate, setStart] = useState(
+    new Date(Date.parse(end) - 27 * 86400000).toISOString().slice(0, 10),
+  );
+  const [endDate, setEnd] = useState(end);
   const [state, setState] = useState<YouTubeState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,6 +55,34 @@ export function YouTubeConnection({
       } else setError(result.error.message);
     } catch {
       setError("The YouTube operation could not finish. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function syncReport(kind: "daily" | "uploads") {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await (kind === "daily"
+        ? window.desktop.syncYouTubeDaily({ startDate, endDate })
+        : window.desktop.syncYouTubeUploads());
+      if (!result.ok) {
+        setError(result.error.message);
+        return;
+      }
+      setNotice(
+        result.value.duplicate
+          ? "Showing the existing identical snapshot."
+          : "YouTube report saved locally.",
+      );
+      onReport?.(result.value.reportId);
+      const fresh = await window.desktop.getYouTube();
+      if (fresh.ok) setState(fresh.value);
+    } catch {
+      setError(
+        "The report could not be synchronized. Saved reports are preserved.",
+      );
     } finally {
       setBusy(false);
     }
@@ -175,11 +210,57 @@ export function YouTubeConnection({
           </>
         )}
       </div>
+      {state?.connected && !settings && (
+        <div className="youtube-report-controls">
+          <h3>Save a YouTube report</h3>
+          <p className="field-note">
+            Daily metrics use the selected report dates. Uploads show cumulative
+            video views, with at most 100 uploads per snapshot.
+          </p>
+          <div className="daily-filters">
+            <label htmlFor="sync-start">Report from</label>
+            <input
+              id="sync-start"
+              type="date"
+              value={startDate}
+              max={endDate}
+              disabled={busy}
+              onChange={(e) => setStart(e.target.value)}
+            />
+            <label htmlFor="sync-end">Report to</label>
+            <input
+              id="sync-end"
+              type="date"
+              value={endDate}
+              min={startDate}
+              max={new Date().toISOString().slice(0, 10)}
+              disabled={busy}
+              onChange={(e) => setEnd(e.target.value)}
+            />
+          </div>
+          <div className="youtube-actions">
+            <button
+              className="button secondary"
+              disabled={busy || !startDate || !endDate}
+              onClick={() => void syncReport("daily")}
+            >
+              Sync daily analytics
+            </button>
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => void syncReport("uploads")}
+            >
+              Sync uploads
+            </button>
+          </div>
+        </div>
+      )}
       {disconnecting && (
         <div className="youtube-confirm">
           <p>
             Disconnect this workspace and remove its saved channel snapshot?
-            Imported reports are kept. To revoke Google account permission, use
+            Saved reports are kept. To revoke Google account permission, use
             your Google account’s third-party connections page.
           </p>
           <button
@@ -208,7 +289,8 @@ export function YouTubeConnection({
           <summary>Set up Google access</summary>
           <ol>
             <li>
-              In Google Cloud, create a project and enable YouTube Data API v3.
+              In Google Cloud, create a project and enable YouTube Data API v3
+              and YouTube Analytics API.
             </li>
             <li>
               Configure Google Auth Platform consent. If the app is in testing,
@@ -226,8 +308,9 @@ export function YouTubeConnection({
           <p>
             Credentials use your operating system’s protected storage and are
             excluded from backups. Linux requires an unlocked system keyring.
-            Read-only channel totals are supported in this stage; watch time,
-            retention, and daily analytics still use imports.
+            Daily analytics requires both read-only permissions. Connections
+            from 0.4 must disconnect and reconnect to grant Analytics access.
+            Retention remains a later feature.
           </p>
         </details>
       )}

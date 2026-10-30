@@ -119,25 +119,63 @@ export class Reports {
         values.periodEnd !== staged!.preview.periodEnd)
     )
       fail("Daily report dates must match the dates detected in the file.");
+    const result = this.persist(staged!.workspaceId, staged!.data, {
+      channelName: values.channelName,
+      fileName: staged!.preview.fileName,
+      periodStart: values.periodStart,
+      periodEnd: values.periodEnd,
+    });
+    this.cancel();
+    return result;
+  }
+  saveYouTube(
+    data: ParsedReport,
+    details: Pick<
+      ReportSummary,
+      | "channelName"
+      | "fileName"
+      | "periodStart"
+      | "periodEnd"
+      | "source"
+      | "channelId"
+    >,
+  ) {
+    return this.persist(this.workspace().id, parsedReport.parse(data), details);
+  }
+  private persist(
+    workspaceId: string,
+    data: ParsedReport,
+    details: Pick<
+      ReportSummary,
+      | "channelName"
+      | "fileName"
+      | "periodStart"
+      | "periodEnd"
+      | "source"
+      | "channelId"
+    >,
+  ) {
     const fingerprint = createHash("sha256")
       .update(
         JSON.stringify([
-          staged!.data.kind,
-          staged!.data.rows.slice().sort((a, b) => a.id.localeCompare(b.id)),
-          values.channelName,
-          values.periodStart,
-          values.periodEnd,
+          data.kind,
+          data.rows.slice().sort((a, b) => a.id.localeCompare(b.id)),
+          details.channelName,
+          details.periodStart,
+          details.periodEnd,
+          ...(details.source && details.source !== "import"
+            ? [details.source, details.channelId, data.warnings]
+            : []),
         ]),
       )
       .digest("hex");
     const existing = this.store.db
       .prepare("SELECT id FROM reports WHERE workspace_id=? AND fingerprint=?")
-      .get(staged!.workspaceId, fingerprint);
+      .get(workspaceId, fingerprint);
     if (existing) {
-      this.cancel();
       return { reportId: String(existing.id), duplicate: true };
     }
-    const payload = JSON.stringify(staged!.data);
+    const payload = JSON.stringify(data);
     const bytes = Number(
       this.store.db
         .prepare(
@@ -156,17 +194,14 @@ export class Reports {
       fail(
         "The preview’s local import limit has been reached (200 reports / 16 MB). Your existing reports are unchanged.",
       );
-    const metadata: ReportSummary = {
+    const metadata: ReportSummary = reportSummary.parse({
       id: randomUUID(),
-      workspaceId: staged!.workspaceId,
-      channelName: values.channelName,
-      fileName: staged!.preview.fileName,
-      kind: staged!.data.kind,
-      rowCount: staged!.data.rows.length,
-      periodStart: values.periodStart,
-      periodEnd: values.periodEnd,
+      workspaceId: workspaceId,
+      kind: data.kind,
+      rowCount: data.rows.length,
       importedAt: new Date().toISOString(),
-    };
+      ...details,
+    });
     this.store.transaction(() =>
       this.store.db
         .prepare("INSERT INTO reports VALUES(?,?,?,?,?)")
@@ -178,7 +213,6 @@ export class Reports {
           fingerprint,
         ),
     );
-    this.cancel();
     return { reportId: metadata.id, duplicate: false };
   }
   dashboard(input: unknown): Dashboard {

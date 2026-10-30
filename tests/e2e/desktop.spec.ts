@@ -396,3 +396,150 @@ test("YouTube setup rejects invalid credentials and cached channel totals surviv
   await expect(cached.getByText("Unavailable", { exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/youtube-cache.png" });
 });
+
+test("synchronizes daily analytics and uploads through the protected main-process bridge", async () => {
+  await create("Live sync fixture");
+  const state = await page.evaluate(() => window.desktop.getState());
+  if (!state.ok) throw new Error("State unavailable");
+  const id = state.value.selectedWorkspaceId!;
+  const scopes = [
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
+  ];
+  const client = {
+    client_id: "fixture.apps.googleusercontent.com",
+    client_secret: "fixture-only",
+  };
+  const encode = (value: unknown) =>
+    Buffer.from(JSON.stringify(value)).toString("base64");
+  writeFileSync(
+    join(data, "credentials.json"),
+    JSON.stringify({
+      "youtube-client": encode(client),
+      [`youtube-${id}`]: encode({
+        client,
+        tokens: {
+          access_token: "fixture-access",
+          refresh_token: "fixture-refresh",
+          expiresAt: Date.now() + 3600000,
+          scopes,
+        },
+      }),
+    }),
+  );
+  await app.evaluate(({ safeStorage }) => {
+    // Isolated synthetic credentials: no OS keyring or actual Google access is used by this test.
+    safeStorage.isEncryptionAvailable = () => true;
+    safeStorage.getSelectedStorageBackend = () => "gnome_libsecret";
+    safeStorage.decryptString = (value) => value.toString();
+    safeStorage.encryptString = (value) => Buffer.from(value);
+    globalThis.fetch = async (raw) => {
+      const url = new URL(String(raw));
+      const channel = "UC1234567890123456789012";
+      if (url.hostname === "youtubeanalytics.googleapis.com")
+        return Response.json({
+          columnHeaders: [
+            "day",
+            "views",
+            "estimatedMinutesWatched",
+            "subscribersGained",
+            "subscribersLost",
+          ].map((name, i) => ({
+            name,
+            columnType: i ? "METRIC" : "DIMENSION",
+            dataType: i ? "INTEGER" : "STRING",
+          })),
+          rows: [
+            ["2026-01-01", 100, 120, 5, 1],
+            ["2026-01-03", 50, 60, 0, 2],
+          ],
+        });
+      if (url.hostname !== "www.googleapis.com")
+        throw new Error("Unexpected test endpoint");
+      if (url.pathname.endsWith("/channels"))
+        return Response.json({
+          items: [
+            url.searchParams.get("part") === "contentDetails"
+              ? {
+                  id: channel,
+                  contentDetails: {
+                    relatedPlaylists: { uploads: "UUfixture" },
+                  },
+                }
+              : {
+                  id: channel,
+                  snippet: { title: "Fixture channel" },
+                  statistics: {
+                    viewCount: "999",
+                    subscriberCount: "50",
+                    videoCount: "1",
+                  },
+                },
+          ],
+        });
+      if (url.pathname.endsWith("/playlistItems"))
+        return Response.json({
+          items: [{ contentDetails: { videoId: "abcdefghijk" } }],
+        });
+      if (url.pathname.endsWith("/videos"))
+        return Response.json({
+          items: [
+            {
+              id: "abcdefghijk",
+              snippet: {
+                channelId: channel,
+                title: "Fixture upload",
+                publishedAt: "2026-01-02T12:00:00Z",
+              },
+              statistics: { viewCount: "99" },
+            },
+          ],
+        });
+      throw new Error("Unexpected test endpoint");
+    };
+  });
+  await page.getByLabel("Settings", { exact: true }).click();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  const connection = page.getByRole("region", { name: "YouTube connection" });
+  await connection.getByLabel("Report from").fill("2026-01-01");
+  await connection.getByLabel("Report to").fill("2026-01-03");
+  await connection
+    .getByRole("button", { name: "Sync daily analytics", exact: true })
+    .click();
+  await expect(
+    page.getByText("YouTube API snapshot", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Saved report")).toContainText(
+    "YouTube daily analytics",
+  );
+  const dashboard = await page.evaluate(() => window.desktop.getDashboard({}));
+  if (!dashboard.ok) throw new Error("Report missing");
+  expect(dashboard.value.totals).toMatchObject({
+    views: 150,
+    watchHours: 3,
+    subscribers: 2,
+    impressions: null,
+  });
+  expect(dashboard.value.series).toHaveLength(2);
+  await connection
+    .getByRole("button", { name: "Sync uploads", exact: true })
+    .click();
+  await expect(
+    page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("YouTube API snapshot", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({ path: "test-results/youtube-reports.png" });
+  await app.close();
+  await launch();
+  await expect(
+    page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Saved report")
+    .selectOption(dashboard.value.selected!.id);
+  await expect(
+    page.getByText("YouTube API snapshot", { exact: true }),
+  ).toBeVisible();
+});

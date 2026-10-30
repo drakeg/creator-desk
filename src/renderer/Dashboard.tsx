@@ -124,11 +124,16 @@ export function Dashboard() {
   };
   return (
     <div className="dashboard-content" aria-busy={loading || busy}>
-      <YouTubeConnection />
+      <YouTubeConnection
+        onReport={(reportId) => {
+          setQuery({ ...initial, reportId });
+          setNotice("Showing a saved YouTube snapshot.");
+        }}
+      />
       <div className="dashboard-toolbar">
         <span className="local-report-label">
           <HardDrive size={14} />
-          Imported analytics
+          Saved analytics
         </span>
         <button
           className="button primary"
@@ -173,17 +178,26 @@ export function Dashboard() {
                 ))}
               </select>
             </div>
-            <span className="snapshot-pill">Local snapshot</span>
+            <span className="snapshot-pill">
+              {data.selected.source?.startsWith("youtube")
+                ? "YouTube API snapshot"
+                : "Imported snapshot"}
+            </span>
           </div>
           <div className="report-provenance">
             <span>{data.selected.fileName}</span>
+            {data.selected.channelId && (
+              <span>Channel {data.selected.channelId}</span>
+            )}
             <span>
-              Imported {new Date(data.selected.importedAt).toLocaleDateString()}
+              Saved {new Date(data.selected.importedAt).toLocaleString()}
             </span>
             <span>
               {data.selected.periodStart
                 ? `${data.selected.periodStart} — ${data.selected.periodEnd}`
-                : "Period unknown / lifetime export"}
+                : data.selected.source === "youtube-uploads"
+                  ? "Cumulative views at sync"
+                  : "Period unknown / lifetime export"}
             </span>
           </div>
           {data.selected.kind === "daily" && (
@@ -246,7 +260,7 @@ export function Dashboard() {
           </div>
           <p className="metric-scope">
             <Info size={13} />
-            Totals reflect matching imported rows in this snapshot, not live
+            Totals reflect matching saved rows in this snapshot, not live
             channel totals. Overlapping reports are never added together.
           </p>
           {data.warnings.length > 0 && (

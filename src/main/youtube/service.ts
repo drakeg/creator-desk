@@ -11,10 +11,14 @@ import {
   authorize as authorizeGoogle,
   desktopClient,
   exchange,
+  ANALYTICS_SCOPE,
   tokens,
   type Client,
   type Tokens,
 } from "./oauth";
+import { Reports } from "../imports/reports";
+import { dailyReport, uploadReport } from "./report-data";
+import { dailySyncInput, type DailySyncInput } from "../../shared/youtube";
 import { googleJSON, type Transport } from "./http";
 const CLIENT = "youtube-client";
 const key = (id: string) => `youtube-${id}`;
@@ -53,7 +57,7 @@ export class YouTube {
     private store: Store,
     private vault: CredentialVault,
     private open: (url: string) => Promise<void>,
-    private transport: Transport = fetch,
+    private transport: Transport = (url, init) => fetch(url, init),
     private authorize: Authorize = authorizeGoogle,
   ) {}
   private workspace() {
@@ -158,8 +162,7 @@ export class YouTube {
     );
     return this.state();
   }
-  async sync() {
-    const id = this.workspace();
+  private async access(id: string, analytics = false) {
     const saved = this.vault.get(key(id));
     if (!saved)
       throw new CoreError("INVALID_INPUT", "Connect to YouTube first.");
@@ -174,15 +177,25 @@ export class YouTube {
         { grant_type: "refresh_token", refresh_token: access.refresh_token },
         controller.signal,
         this.transport,
+        access.scopes,
       );
       this.vault.set(key(id), JSON.stringify({ ...account, tokens: access }));
     }
+    if (analytics && !access.scopes.includes(ANALYTICS_SCOPE))
+      throw new CoreError(
+        "REMOTE_ERROR",
+        "Daily analytics needs an additional read-only permission. Disconnect and reconnect YouTube in Settings, granting both requested permissions.",
+      );
+    return access.access_token;
+  }
+  async sync() {
+    const id = this.workspace();
+    const access = await this.access(id);
     const parsed = channels.safeParse(
       await googleJSON(
         "https://www.googleapis.com/youtube/v3/channels?part=snippet%2Cstatistics&mine=true",
         {
-          headers: { Authorization: `Bearer ${access.access_token}` },
-          signal: controller.signal,
+          headers: { Authorization: `Bearer ${access}` },
         },
         this.transport,
       ),
@@ -226,5 +239,84 @@ export class YouTube {
     );
     this.errors.delete(id);
     return this.state();
+  }
+
+  async syncDaily(input: DailySyncInput) {
+    const range = dailySyncInput.parse(input);
+    const id = this.workspace();
+    const token = await this.access(id, true);
+    await this.sync();
+    const channel = this.state().snapshot!;
+    const data = await dailyReport(token, channel.id, range, this.transport);
+    if (this.workspace() !== id)
+      throw new CoreError(
+        "CANCELLED",
+        "The workspace changed. Sync again in the intended workspace.",
+      );
+    return new Reports(this.store).saveYouTube(data, {
+      channelName: channel.title.slice(0, 100),
+      channelId: channel.id,
+      source: "youtube-daily",
+      fileName: "YouTube daily analytics",
+      periodStart: data.rows[0]!.date,
+      periodEnd: data.rows.at(-1)!.date,
+    });
+  }
+  async syncUploads() {
+    const id = this.workspace();
+    const token = await this.access(id);
+    await this.sync();
+    const channel = this.state().snapshot!;
+    const url = new URL("https://www.googleapis.com/youtube/v3/channels");
+    url.search = new URLSearchParams({
+      part: "contentDetails",
+      id: channel.id,
+    }).toString();
+    const response = z
+      .object({
+        items: z
+          .array(
+            z.object({
+              id: z.literal(channel.id),
+              contentDetails: z.object({
+                relatedPlaylists: z.object({
+                  uploads: z.string().regex(/^[A-Za-z0-9_-]{1,100}$/),
+                }),
+              }),
+            }),
+          )
+          .length(1),
+      })
+      .safeParse(
+        await googleJSON(
+          url.href,
+          { headers: { Authorization: `Bearer ${token}` } },
+          this.transport,
+        ),
+      );
+    if (!response.success)
+      throw new CoreError(
+        "REMOTE_ERROR",
+        "YouTube did not return the channel uploads playlist.",
+      );
+    const data = await uploadReport(
+      token,
+      response.data.items[0]!.contentDetails.relatedPlaylists.uploads,
+      channel.id,
+      this.transport,
+    );
+    if (this.workspace() !== id)
+      throw new CoreError(
+        "CANCELLED",
+        "The workspace changed. Sync again in the intended workspace.",
+      );
+    return new Reports(this.store).saveYouTube(data, {
+      channelName: channel.title.slice(0, 100),
+      channelId: channel.id,
+      source: "youtube-uploads",
+      fileName: "YouTube uploads (cumulative views)",
+      periodStart: null,
+      periodEnd: null,
+    });
   }
 }

@@ -1,6 +1,6 @@
 # Creator Desk capability map
 
-Status: desktop-core is implemented. Version 0.2.0 adds local CSV/JSON imports and imported channel analytics. The 0.4 development branch adds desktop OAuth and manual read-only channel-total synchronization. Detailed analytics and the remaining modules are planned.
+Status: desktop-core is implemented. Version 0.2.0 adds local CSV/JSON imports and imported channel analytics. Version 0.5 adds daily Analytics reports and capped upload snapshots to desktop OAuth and manual channel totals. Retention and the remaining modules are planned.
 
 ## Product scope
 
@@ -56,4 +56,4 @@ Each stage should deliver working workflows. Unimplemented features must be mark
 
 ## Current implementation
 
-See SPEC-desktop-core.md, SPEC-imports-dashboard.md, README.md and VERIFICATION-0.2.0.md. See YOUTUBE-CONNECTION.md for desktop OAuth and manual channel-total synchronization. Next: authorized daily analytics and upload synchronization.
+See SPEC-desktop-core.md, SPEC-imports-dashboard.md, README.md and VERIFICATION-0.2.0.md. See YOUTUBE-CONNECTION.md for desktop OAuth and manual channel-total synchronization. Daily reports and upload snapshots now feed the existing viewer. Next: report management and project planning.

@@ -116,6 +116,11 @@ export const reportSummary = z
     periodStart: dateOnly.nullable(),
     periodEnd: dateOnly.nullable(),
     importedAt: z.iso.datetime(),
+    source: z.enum(["import", "youtube-daily", "youtube-uploads"]).optional(),
+    channelId: z
+      .string()
+      .regex(/^UC[A-Za-z0-9_-]{22}$/)
+      .optional(),
   })
   .strict()
   .refine(
@@ -125,6 +130,16 @@ export const reportSummary = z
         v.periodEnd !== null &&
         v.periodStart <= v.periodEnd),
     "Invalid report period.",
+  )
+  .refine(
+    (v) =>
+      !v.source ||
+      v.source === "import" ||
+      (!!v.channelId &&
+        (v.source === "youtube-daily"
+          ? v.kind === "daily"
+          : v.kind === "videos" && v.periodStart === null)),
+    "Invalid YouTube report provenance.",
   );
 export type ReportSummary = z.infer<typeof reportSummary>;
 export const dashboardInput = z

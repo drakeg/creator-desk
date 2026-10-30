@@ -10,7 +10,7 @@ export class GoogleError extends CoreError {
       reason === "invalid_grant" || status === 401
         ? "Google access expired or was revoked. Disconnect and connect again."
         : status === 403
-          ? "Google denied access. Check that YouTube Data API v3 is enabled, consent is granted, and quota is available."
+          ? "Google denied access. Check that the required YouTube Data/Analytics APIs are enabled, consent is granted, and quota is available."
           : "Google could not complete the request. Check your connection and try again.",
     );
   }

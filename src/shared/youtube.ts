@@ -17,3 +17,21 @@ export interface YouTubeState {
   error: string | null;
   snapshot: ChannelSnapshot | null;
 }
+
+import { dateOnly } from "./analytics";
+export const dailySyncInput = z
+  .object({ startDate: dateOnly, endDate: dateOnly })
+  .strict()
+  .refine((v) => {
+    const days = (Date.parse(v.endDate) - Date.parse(v.startDate)) / 86400000;
+    return (
+      days >= 0 &&
+      days < 366 &&
+      v.endDate <= new Date().toISOString().slice(0, 10)
+    );
+  }, "Choose a valid report range of at most 366 days, ending today or earlier.");
+export type DailySyncInput = z.infer<typeof dailySyncInput>;
+export interface SyncReportResult {
+  reportId: string;
+  duplicate: boolean;
+}
