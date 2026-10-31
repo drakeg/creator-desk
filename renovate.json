@@ -7,6 +7,12 @@
       "matchManagers": ["npm"],
       "matchPackageNames": ["typescript"],
       "allowedVersions": "<6.1.0"
+    },
+    {
+      "description": "Keep the validated Node 22 build toolchain; Node 26 produced Linux packages with a missing installed executable.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["node"],
+      "allowedVersions": "<23"
     }
   ]
 }
