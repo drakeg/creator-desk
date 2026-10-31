@@ -1,4 +1,4 @@
-# Creator Desk 0.7.0 (development)
+# Creator Desk 0.7.1 (development)
 
 An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research and AI tools remain planned.
 
