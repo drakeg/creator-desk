@@ -40,7 +40,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
-          node-version: "26.13.0"
+          node-version: "22.23.4"
       - run: npm ci --ignore-scripts
       - run: npm run bootstrap
       - name: Prepare checksum-verified synthetic media test tool
@@ -76,11 +76,18 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Check whether this version needs publishing
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-status.mjs
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        if: steps.release.outputs.publish == 'true'
         with:
           path: release
           merge-multiple: true
       - name: Verify and publish downloads
+        if: steps.release.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash

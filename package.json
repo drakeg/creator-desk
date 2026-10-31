@@ -1,6 +1,6 @@
 {
   "name": "creator-desk",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A local workspace for video creators",
   "main": "dist/main/index.cjs",
   "directories": {

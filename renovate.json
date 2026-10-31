@@ -1,6 +1,18 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "description": "Keep TypeScript compatible with typescript-eslint; revisit when its supported compiler range includes 7.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.1.0"
+    },
+    {
+      "description": "Keep the validated Node 22 build toolchain; Node 26 produced Linux packages with a missing installed executable.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["node"],
+      "allowedVersions": "<23"
+    }
   ]
 }
