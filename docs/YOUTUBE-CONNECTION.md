@@ -2,7 +2,11 @@
 
 This stage connects one YouTube channel per workspace and synchronizes a timestamped channel-total snapshot. Manual sync retrieves channel views, subscriber count, and video count from YouTube Data API v3. Subscriber counts can be rounded or hidden. Missing values remain unavailable. The snapshot is displayed separately from imported reports and remains readable offline. Failed requests preserve the previous snapshot.
 
-## Set up your Google project
+## Connect with a preconfigured app
+
+When the publisher includes a Desktop OAuth client, Settings shows Connect YouTube immediately. Approve both read-only permissions in your system browser; the app receives the callback automatically. End users do not need a Google Cloud project or JSON credentials. Publisher setup is documented in [GOOGLE-PUBLISHER-SETUP.md](GOOGLE-PUBLISHER-SETUP.md).
+
+## Set up your own Google project (advanced)
 
 1. Create or select a Google Cloud project and enable YouTube Data API v3 and YouTube Analytics API.
 2. Configure the Google Auth Platform consent screen. If the app is in testing, add the account you will use as a test user.
@@ -10,7 +14,7 @@ This stage connects one YouTube channel per workspace and synchronizes a timesta
 4. Create/select a Creator Desk workspace. In Settings → YouTube connection, import the credentials JSON. Web application credentials are rejected.
 5. Choose Connect YouTube. Complete consent in the system browser, selecting the Google account or Brand Account for the channel. Return to the app and choose Sync channel.
 
-The user supplies their own Google application configuration. No application credentials are bundled in source or installers. Google testing/verification requirements and quotas apply. A test-mode refresh token may expire; reconnect when Google reports revoked or expired access.
+A build may use publisher-provided Desktop application configuration or an imported custom client. No real configuration is checked into source. Imported custom clients override the app default; user tokens are always protected separately. Google testing/verification requirements and quotas apply. A test-mode refresh token may expire; reconnect when Google reports revoked or expired access.
 
 ## Daily analytics and uploads (0.5)
 

@@ -26,6 +26,8 @@ import { dailySyncInput } from "../shared/youtube";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
 import { registerShorts } from "./shorts/ipc";
+import { loadAppClient } from "./youtube/app-client";
+import { googleSetupURL, openGoogleSetupInput } from "./youtube/setup-links";
 import { YouTube } from "./youtube/service";
 import { Store } from "./storage/store";
 import { Backups } from "./storage/backups";
@@ -93,6 +95,11 @@ function handle(
 }
 function configureIPC() {
   registerShorts(handle, shorts, () => window!);
+  handle("openGoogleSetup", openGoogleSetupInput, async (input) => {
+    await shell.openExternal(googleSetupURL(input));
+    return null;
+  });
+  handle("useAppGoogleClient", z.undefined(), () => youtube.useAppClient());
   handle("getYouTube", z.undefined(), () => youtube.state());
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());
@@ -292,7 +299,14 @@ else {
         encryptString: (value) => safeStorage.encryptString(value),
         decryptString: (value) => safeStorage.decryptString(value),
       });
-      youtube = new YouTube(store, vault, (url) => shell.openExternal(url));
+      youtube = new YouTube(
+        store,
+        vault,
+        (url) => shell.openExternal(url),
+        undefined,
+        undefined,
+        loadAppClient(join(__dirname, "google-client.json")),
+      );
       shorts = new Shorts(store, new AI(store, vault));
       protocol.handle("creator-media", (request) => shorts.response(request));
       nativeTheme.themeSource = store.state().appearance;

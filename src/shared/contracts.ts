@@ -59,6 +59,10 @@ export interface DesktopCore {
   readonly shorts: import("./shorts").ShortsAPI;
   readonly runtime: { sandboxed: boolean; contextIsolated: boolean };
   getState(): Promise<Result<CoreState>>;
+  openGoogleSetup(input: {
+    page: import("./google-setup").GoogleSetupPage;
+  }): Promise<Result<null>>;
+  useAppGoogleClient(): Promise<Result<YouTubeState>>;
   getYouTube(): Promise<Result<YouTubeState>>;
   importYouTubeClient(): Promise<Result<YouTubeState | null>>;
   connectYouTube(): Promise<Result<YouTubeState>>;
