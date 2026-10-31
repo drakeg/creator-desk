@@ -11,8 +11,8 @@
     {
       "description": "Keep the validated Node 22 build toolchain; Node 26 produced Linux packages with a missing installed executable.",
       "matchManagers": ["github-actions"],
-      "matchPackageNames": ["node"],
-      "allowedVersions": "<23"
+      "allowedVersions": "<23",
+      "matchDepNames": ["node"]
     }
   ]
 }
