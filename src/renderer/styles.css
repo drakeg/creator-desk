@@ -1647,3 +1647,44 @@ dialog {
   line-height: 1.7;
   margin: 8px 0;
 }
+
+.transcript-panel > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.transcript-search,
+.caption-edit-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.transcript-search input,
+.caption-edit-form > textarea {
+  width: 100%;
+}
+.caption-edit-form textarea {
+  min-height: 120px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.caption-edit-form .studio-form-grid {
+  margin-bottom: 16px;
+}
+.transcript-cue {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.transcript-cue .caption-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.transcript-panel nav {
+  align-items: center;
+}

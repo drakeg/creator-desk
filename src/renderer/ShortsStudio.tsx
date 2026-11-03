@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ShortsState, Clip } from "../shared/shorts";
 import type { Result } from "../shared/contracts";
 import { AIProvider } from "./AIProvider";
+import { TranscriptPanel } from "./TranscriptPanel";
+import { selectClipBoundary } from "../shared/clip-selection";
 export function ShortsStudio() {
   const [state, setState] = useState<ShortsState | null>(null);
   const [draft, setDraft] = useState<Clip | null>(null);
@@ -9,6 +11,7 @@ export function ShortsStudio() {
   const [error, setError] = useState("");
   const [previewError, setPreviewError] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
+  const previewEnd = useRef<number | null>(null);
   const hasJob = !!state?.job;
   useEffect(() => {
     let active = true;
@@ -42,6 +45,7 @@ export function ShortsStudio() {
         if (result.value.source?.url !== state?.source?.url) {
           setDraft(result.value.draft);
           setPreviewError(false);
+          previewEnd.current = null;
         }
       } else setError(result.error.message);
     } catch {
@@ -132,7 +136,11 @@ export function ShortsStudio() {
                 }}
                 onError={() => setPreviewError(true)}
                 onTimeUpdate={() => {
-                  if (video.current && video.current.currentTime >= draft.end)
+                  if (
+                    video.current &&
+                    previewEnd.current !== null &&
+                    video.current.currentTime >= previewEnd.current
+                  )
                     video.current.pause();
                 }}
               />
@@ -141,6 +149,7 @@ export function ShortsStudio() {
               className="button secondary"
               onClick={() => {
                 if (video.current) {
+                  previewEnd.current = draft.end;
                   video.current.currentTime = draft.start;
                   void video.current.play().catch(() => setPreviewError(true));
                 }
@@ -307,19 +316,44 @@ export function ShortsStudio() {
             destination: {state.providers.clips?.config.baseURL ?? "none"}.
           </p>
           {state.cues.length > 0 && (
-            <details>
-              <summary>Review timed transcript</summary>
-              <div className="transcript-cues">
-                {state.cues.map((c, i) => (
-                  <p key={i}>
-                    <strong>
-                      {c.start.toFixed(1)}–{c.end.toFixed(1)}s
-                    </strong>{" "}
-                    {c.text}
-                  </p>
-                ))}
-              </div>
-            </details>
+            <TranscriptPanel
+              key={state.source.url}
+              cues={state.cues}
+              source={state.source}
+              disabled={busy}
+              onSaved={(value) => {
+                setState(value);
+                setError("");
+              }}
+              onPlay={(cue) => {
+                if (video.current) {
+                  previewEnd.current = cue.end;
+                  video.current.currentTime = cue.start;
+                  void video.current.play().catch(() => setPreviewError(true));
+                }
+              }}
+              onBoundary={(boundary, time) => {
+                if (draft) {
+                  try {
+                    update(
+                      selectClipBoundary(
+                        draft,
+                        boundary,
+                        time,
+                        state.source!.duration,
+                      ),
+                    );
+                    setError("");
+                  } catch (error) {
+                    setError(
+                      error instanceof Error
+                        ? error.message
+                        : "Choose a valid clip boundary.",
+                    );
+                  }
+                }
+              }}
+            />
           )}
           {state.suggestions.map((suggestion, i) => (
             <article className="clip-suggestion" key={i}>

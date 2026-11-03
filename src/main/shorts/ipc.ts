@@ -1,6 +1,11 @@
 import { dialog, type BrowserWindow } from "electron";
 import { z } from "zod";
-import { clip, saveAiInput, aiPurpose } from "../../shared/shorts";
+import {
+  clip,
+  saveAiInput,
+  aiPurpose,
+  updateCueInput,
+} from "../../shared/shorts";
 import { CoreError } from "../../shared/contracts";
 import { Shorts } from "./service";
 type Register = (
@@ -64,6 +69,7 @@ export function registerShorts(
   );
   handle("shortsTranscribe", z.undefined(), () => shorts.transcribe());
   handle("shortsSuggest", z.undefined(), () => shorts.suggest());
+  handle("shortsUpdateCue", updateCueInput, (input) => shorts.updateCue(input));
   handle("shortsSaveDraft", clip, (input) => shorts.saveDraft(input));
   handle("shortsCancel", z.undefined(), () => shorts.cancel());
   handle("shortsExport", clip, async (input) => {

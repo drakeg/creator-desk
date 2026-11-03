@@ -6,6 +6,8 @@ const core: DesktopCore = {
     chooseVideo: () => ipcRenderer.invoke("core:shortsChooseVideo"),
     chooseFFmpeg: () => ipcRenderer.invoke("core:shortsChooseFFmpeg"),
     importTranscript: () => ipcRenderer.invoke("core:shortsImportTranscript"),
+    updateCue: (input: Parameters<DesktopCore["shorts"]["updateCue"]>[0]) =>
+      ipcRenderer.invoke("core:shortsUpdateCue", input),
     saveAI: (input: Parameters<DesktopCore["shorts"]["saveAI"]>[0]) =>
       ipcRenderer.invoke("core:shortsSaveAI", input),
     removeAI: (input: { purpose: import("../shared/shorts").AiPurpose }) =>

@@ -1,10 +1,12 @@
-# Creator Desk 0.7.1 (development)
+# Creator Desk 0.8.0 (development)
 
-An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research and AI tools remain planned.
+An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research tools remain planned.
 
 ## Create Shorts
 
 Open **Studio**. Select an installed FFmpeg executable, then choose an MP4, MOV, M4V, or WebM source. Trim 1–180 seconds, adjust vertical framing, and export a 720×1280 H.264/AAC MP4. Timed captions can be burned into the video and also export as a uniquely named SRT sidecar. Your original video is never modified.
+
+Open **Review timed transcript** to search captions, play a moment, set clip boundaries, or correct text and timing. Save a caption correction locally before exporting; old AI suggestions are cleared when the transcript changes.
 
 AI is optional. Configure Ollama or an OpenAI-compatible model for transcript-based clip suggestions. Import SRT/VTT captions for an entirely local Ollama workflow, or separately configure a compatible speech endpoint to transcribe extracted audio. Providers receive only the data you explicitly permit, when you start the corresponding action. No AI receives general filesystem, computer-control, or publishing access. See [Shorts setup and limits](docs/SHORTS.md).
 
@@ -62,7 +64,7 @@ Migration from schema 1 saves a before-schema-2 recovery backup and updates tran
 
 ## Build and test
 
-Node 22.23.4+ and npm 12.2.1 were used. Dependencies remain unchanged from 0.1; exact versions are pinned in the lockfile.
+Node 22.23.4+ and npm 12.2.1 were used. Exact dependency versions are pinned in the lockfile.
 
 ```sh
 npm ci

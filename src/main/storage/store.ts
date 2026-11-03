@@ -121,7 +121,7 @@ export class Store {
       appearance: appearance.parse(this.setting("appearance", "system")),
       sidebarCollapsed: this.setting("sidebarCollapsed", false),
       dataLocation: this.root,
-      version: "0.7.1",
+      version: "0.8.0",
     };
   }
   create(input: unknown): Workspace {

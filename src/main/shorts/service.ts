@@ -23,7 +23,12 @@ import { Readable } from "node:stream";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { CoreError } from "../../shared/contracts";
-import { clip, cue, type ShortsState } from "../../shared/shorts";
+import {
+  clip,
+  cue,
+  updateCueInput,
+  type ShortsState,
+} from "../../shared/shorts";
 import { Store } from "../storage/store";
 import { atomicWrite, openRegularFile } from "../storage/files";
 import { AI } from "./ai";
@@ -253,6 +258,44 @@ export class Shorts {
     } finally {
       closeSync(fd);
     }
+  }
+  updateCue(input: unknown) {
+    if (this.job)
+      throw new CoreError(
+        "INVALID_INPUT",
+        "Cancel the current job before editing captions.",
+      );
+    const value = updateCueInput.parse(input);
+    const source = this.source();
+    const project = this.project();
+    const original = project.cues[value.index];
+    if (
+      value.sourceURL !== `creator-media://media/${source.token}` ||
+      !original ||
+      original.start !== value.original.start ||
+      original.end !== value.original.end ||
+      original.text !== value.original.text
+    )
+      throw new CoreError(
+        "INVALID_INPUT",
+        "The transcript or source changed. Close this edit and reopen the caption.",
+      );
+    if (value.updated.end > source.duration)
+      throw new CoreError(
+        "INVALID_INPUT",
+        "Caption timing must stay within the source video.",
+      );
+    const cues = validateCues(
+      project.cues.map((c, index) =>
+        index === value.index ? value.updated : c,
+      ),
+      source.duration,
+    );
+    this.save(this.workspace(), { ...project, cues, suggestions: [] });
+    this.error = null;
+    this.notice =
+      "Caption saved locally. Generate new AI suggestions when needed.";
+    return this.state();
   }
   saveDraft(input: unknown) {
     if (this.job)

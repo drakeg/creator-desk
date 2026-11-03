@@ -1,6 +1,6 @@
 # Shorts Studio
 
-Creator Desk 0.6 prioritizes turning existing long videos into Shorts. Manual editing and export are local and do not require AI. AI can transcribe audio and suggest clips, but suggestions are drafts to review before exporting.
+Creator Desk 0.8 prioritizes turning existing long videos into Shorts. Manual editing and export are local and do not require AI. AI can transcribe audio and suggest clips, but suggestions are drafts to review before exporting.
 
 ## Local media setup
 
@@ -9,6 +9,12 @@ Install FFmpeg separately and choose its executable in Studio. On Apple Silicon 
 Choose MP4/MOV/M4V or WebM, up to six hours / 20 GB. One source draft is retained per workspace. Replacing the source resets that draft and transcript. Originals remain at their selected locations and are never modified; moving or changing a source requires selecting it again.
 
 Trim 1–180 seconds. Fill crops to a vertical frame with a horizontal focus control; Fit preserves the entire picture with black padding. Preview uses the source codec and framing; unsupported playback codecs may still export through FFmpeg. Export produces 720×1280, 30 fps H.264/AAC MP4. Optional burned captions require subtitle support; timed captions also produce a uniquely named SRT sidecar so an existing adjacent subtitle file is never silently overwritten. Review exported captions before publishing.
+
+## Find moments and correct captions
+
+Open **Review timed transcript** after importing captions or transcribing audio. Search wording across the entire transcript; results display at most 50 captions per page. **Play** previews that caption in the existing player. **Start here** and **End here** use a caption's timing as a trim boundary. A valid opposite boundary stays in place; if it would produce a clip outside 1–180 seconds, it adjusts to fit up to 60 seconds within the source. Choose **Save clip draft** to preserve those trim changes.
+
+**Edit caption** opens a local editor for text and start/end seconds. **Save caption** validates source bounds and existing transcript limits before updating the saved transcript. **Discard changes** or Escape preserves the previous caption. Corrected captions are used in subsequent SRT/burned-caption exports and explicit AI suggestion requests. Existing exported files do not change. Saving a correction clears stale AI suggestions but keeps the clip draft; generate suggestions again if needed. No AI request occurs when editing or saving captions. Stale edits and edits during an active media/AI job are rejected.
 
 ## Choose AI and grant access
 
