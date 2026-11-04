@@ -1,9 +1,10 @@
-Creator Desk 0.7.1 updates the desktop runtime and maintains reliable dependency builds.
+Creator Desk 0.8 adds transcript editing to Shorts Studio.
 
-- Updated Electron to 45.2.1, including upstream Chromium fixes.
-- Updated ESLint and retained the supported TypeScript compiler range.
-- Dependency-only merges preserve existing published downloads instead of failing or replacing them. New installer versions still require all native build and installed-app checks.
+- Search timed captions and browse large transcripts in pages of 50.
+- Play a caption in the video preview and use its timing to set a clip's start or end.
+- Correct caption text and timing locally, then use those corrections in burned captions, SRT sidecars, and future AI suggestions.
+- Saved corrections survive restarts and clear stale AI suggestions while keeping the clip draft. Invalid, stale, and cross-workspace edits are rejected.
 
-Includes the Google setup improvements from 0.7: exact setup links and optional publisher-configured sign-in. See docs/GOOGLE-PUBLISHER-SETUP.md for activation; no real publisher credentials are bundled in source.
+AI remains optional and user-selected, including Ollama for local transcript analysis. Editing captions makes no AI request. Source media stays untouched; existing database backups still exclude Shorts drafts/transcripts/media.
 
 Downloads cover Apple Silicon/Intel macOS, Windows x64, and Debian/Ubuntu Linux x64. macOS builds are ad hoc signed and not notarized; Windows builds are unsigned. Checksums are included.

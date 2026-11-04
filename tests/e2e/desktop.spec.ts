@@ -620,6 +620,7 @@ test("creates an AI-suggested vertical Short with real local media processing", 
     )
     .toBeGreaterThanOrEqual(1);
   await app.evaluate(() => {
+    let chatCalls = 0;
     globalThis.fetch = async (raw, init) => {
       const url = String(raw);
       if (url.endsWith("/audio/transcriptions")) {
@@ -633,7 +634,10 @@ test("creates an AI-suggested vertical Short with real local media processing", 
           ],
         });
       }
-      if (url.endsWith("/api/chat"))
+      if (url.endsWith("/api/chat")) {
+        chatCalls++;
+        if (chatCalls > 1 && !String(init!.body).includes("Corrected payoff"))
+          throw new Error("Expected corrected transcript");
         return Response.json({
           message: {
             content: JSON.stringify({
@@ -649,6 +653,7 @@ test("creates an AI-suggested vertical Short with real local media processing", 
             }),
           },
         });
+      }
       if (url.endsWith("/api/tags"))
         return Response.json({ models: [{ name: "fixture-local" }] });
       throw new Error("Unexpected test endpoint");
@@ -692,6 +697,81 @@ test("creates an AI-suggested vertical Short with real local media processing", 
   ).toBeVisible();
   await page.getByRole("button", { name: "Use suggestion 1" }).click();
   await expect(page.getByLabel("Short title")).toHaveValue("A strong moment");
+  await page.getByText("Review timed transcript", { exact: true }).click();
+  await page.getByLabel("Search transcript").fill("not present");
+  await expect(
+    page.getByText("No captions match this search. Try another phrase."),
+  ).toBeVisible();
+  await page.getByLabel("Search transcript").fill("payoff");
+  await expect(page.getByText(/1 matching captions/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Play caption 2", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page
+        .locator("video")
+        .evaluate((v) => (v as HTMLVideoElement).currentTime),
+    )
+    .toBeGreaterThanOrEqual(3);
+  await page.locator("video").evaluate((v) => (v as HTMLVideoElement).pause());
+  await page
+    .getByRole("button", { name: "End clip at caption 2", exact: true })
+    .click();
+  await expect(page.getByLabel("End (seconds)", { exact: true })).toHaveValue(
+    "5",
+  );
+  await page.getByLabel("Search transcript").fill("");
+  await page
+    .getByRole("button", { name: "Start clip at caption 1", exact: true })
+    .click();
+  await expect(page.getByLabel("Start (seconds)", { exact: true })).toHaveValue(
+    "1",
+  );
+  await page
+    .getByRole("button", { name: "Edit caption 2", exact: true })
+    .click();
+  await page
+    .getByLabel("Caption text", { exact: true })
+    .fill("Discard this correction");
+  await page.getByLabel("Caption text", { exact: true }).press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByText("A satisfying payoff.", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Edit caption 2", exact: true })
+    .click();
+  await page
+    .getByLabel("Caption text", { exact: true })
+    .fill("Corrected payoff, ready to share.");
+  await page
+    .getByLabel("Caption start (seconds)", { exact: true })
+    .fill("3.25");
+  await page.getByLabel("Caption end (seconds)", { exact: true }).fill("2");
+  await page.getByRole("button", { name: "Save caption", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toHaveText(
+    "Enter caption text and an end time after its start.",
+  );
+  await page.getByLabel("Caption end (seconds)", { exact: true }).fill("4.75");
+  await page.screenshot({ path: "test-results/caption-editor.png" });
+  await page.getByRole("button", { name: "Save caption", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByText("Corrected payoff, ready to share.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Use suggestion 1" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Suggest clips with selected AI" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Use suggestion 1" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Save clip draft", exact: true })
+    .click();
   await page.getByLabel("Burn captions into video").check();
   await app.evaluate(({ dialog }, path) => {
     dialog.showSaveDialog = async () => ({ canceled: false, filePath: path });
@@ -715,11 +795,74 @@ test("creates an AI-suggested vertical Short with real local media processing", 
   expect(createHash("sha256").update(readFileSync(source)).digest("hex")).toBe(
     before,
   );
+  const { readdirSync } = await import("node:fs");
+  const sidecar = readdirSync(data).find(
+    (name) => name.startsWith("finished-short.mp4.") && name.endsWith(".srt"),
+  );
+  expect(sidecar).toBeTruthy();
+  const captions = readFileSync(join(data, sidecar!), "utf8");
+  expect(captions).toContain("Corrected payoff, ready to share.");
+  expect(captions).toContain("00:00:02,250 --> 00:00:03,750");
+  expect(captions).not.toContain("A satisfying payoff.");
   await page.screenshot({ path: "test-results/shorts-studio.png" });
   await app.close();
   await launch();
   await page.getByRole("button", { name: "Studio", exact: true }).click();
   await expect(page.getByLabel("Short title")).toHaveValue("A strong moment");
+  const savedTranscript = await page.evaluate(() =>
+    window.desktop.shorts.get(),
+  );
+  expect(savedTranscript.ok && savedTranscript.value.cues[1]).toEqual({
+    start: 3.25,
+    end: 4.75,
+    text: "Corrected payoff, ready to share.",
+  });
+  const transcriptFile = join(data, "many-captions.srt");
+  const stamp = (ms: number) =>
+    `00:00:${String(Math.floor(ms / 1000)).padStart(2, "0")},${String(ms % 1000).padStart(3, "0")}`;
+  writeFileSync(
+    transcriptFile,
+    Array.from(
+      { length: 61 },
+      (_, i) =>
+        `${i + 1}\n${stamp(i * 80)} --> ${stamp(i * 80 + 50)}\n${i === 50 ? "A distinctive needle caption." : "Caption content " + (i + 1)}\n`,
+    ).join("\n"),
+  );
+  await choose(transcriptFile);
+  await page
+    .getByRole("button", { name: "Import SRT / VTT", exact: true })
+    .click();
+  await page.getByText("Review timed transcript", { exact: true }).click();
+  await expect(page.locator(".transcript-cue")).toHaveCount(50);
+  await page
+    .getByRole("button", { name: "Next captions", exact: true })
+    .click();
+  await expect(page.locator(".transcript-cue")).toHaveCount(11);
+  await page
+    .getByRole("button", { name: "Edit caption 51", exact: true })
+    .click();
+  await expect(page.getByLabel("Caption text", { exact: true })).toHaveValue(
+    "A distinctive needle caption.",
+  );
+  await page
+    .getByRole("button", { name: "Discard changes", exact: true })
+    .click();
+  await page.getByLabel("Search transcript").fill("distinctive needle");
+  await expect(page.locator(".transcript-cue")).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "Edit caption 51", exact: true }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 800, height: 700 });
+  await page
+    .getByRole("button", { name: "Edit caption 51", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Save caption", exact: true }),
+  ).toBeInViewport();
+  await page.screenshot({ path: "test-results/caption-editor-small.png" });
+  await page
+    .getByRole("button", { name: "Discard changes", exact: true })
+    .click();
 });
 
 test("Google setup displays exact URLs and opens only fixed destinations in the system browser", async () => {

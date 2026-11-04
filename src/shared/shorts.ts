@@ -8,6 +8,15 @@ export const cue = z
   .strict()
   .refine((v) => v.end > v.start);
 export type Cue = z.infer<typeof cue>;
+export const updateCueInput = z
+  .object({
+    sourceURL: z.string().max(100),
+    index: z.number().int().min(0).max(9999),
+    original: cue,
+    updated: cue,
+  })
+  .strict();
+export type UpdateCueInput = z.infer<typeof updateCueInput>;
 export const clip = z
   .object({
     start: z.number().finite().nonnegative(),
@@ -90,6 +99,9 @@ export interface ShortsAPI {
   chooseVideo(): Promise<import("./contracts").Result<ShortsState>>;
   chooseFFmpeg(): Promise<import("./contracts").Result<ShortsState>>;
   importTranscript(): Promise<import("./contracts").Result<ShortsState>>;
+  updateCue(
+    input: UpdateCueInput,
+  ): Promise<import("./contracts").Result<ShortsState>>;
   saveAI(
     input: z.input<typeof saveAiInput>,
   ): Promise<import("./contracts").Result<ShortsState>>;

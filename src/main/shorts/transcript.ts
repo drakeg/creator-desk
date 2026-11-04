@@ -73,7 +73,10 @@ export function srt(cues: Cue[], clip: Pick<Clip, "start" | "end">): string {
     .filter((c) => c.end > clip.start && c.start < clip.end)
     .map(
       (c, i) =>
-        `${i + 1}\n${stamp(Math.max(0, c.start - clip.start))} --> ${stamp(Math.min(clip.end, c.end) - clip.start)}\n${c.text.replace(/[<>{}\\]/g, "")}\n`,
+        `${i + 1}\n${stamp(Math.max(0, c.start - clip.start))} --> ${stamp(Math.min(clip.end, c.end) - clip.start)}\n${c.text
+          .replace(/[<>{}\\]/g, "")
+          .replace(/\r/g, "")
+          .replace(/\n(?:[ \t]*\n)+/g, "\n")}\n`,
     )
     .join("\n");
 }
