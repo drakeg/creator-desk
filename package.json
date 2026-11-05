@@ -50,7 +50,7 @@
   "productName": "Creator Desk",
   "author": "Creator Desk",
   "private": true,
-  "packageManager": "npm@12.2.1",
+  "packageManager": "npm@12.2.2",
   "config": {
     "forge": "./forge.config.cjs"
   }
