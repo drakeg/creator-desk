@@ -90,6 +90,17 @@ export function ShortsStudio() {
         </div>
       )}
       <div className="youtube-actions">
+        {!state?.ffmpegManaged && (
+          <button
+            className="button primary"
+            disabled={busy}
+            onClick={() =>
+              void perform(() => window.desktop.shorts.setupFFmpeg())
+            }
+          >
+            {state?.ffmpegReady ? "Use app-managed FFmpeg" : "Set up FFmpeg"}
+          </button>
+        )}
         <button
           className="button secondary"
           disabled={busy}
@@ -115,11 +126,31 @@ export function ShortsStudio() {
       </div>
       {!state?.ffmpegReady && (
         <p className="field-note">
-          Install FFmpeg, then choose its executable (for example
-          /opt/homebrew/bin/ffmpeg on an Apple Silicon Mac). MP4, MOV, M4V, and
-          WebM sources up to six hours / 20 GB are supported.
+          Set up FFmpeg downloads a verified build (about 33–69 MB) from
+          Jellyfin’s GitHub release into Creator Desk. No administrator access
+          or separate system installation is needed. You can also choose an
+          existing FFmpeg executable. MP4, MOV, M4V, and WebM sources up to six
+          hours / 20 GB are supported.
         </p>
       )}
+      {state?.ffmpegManaged && (
+        <p className="field-note">
+          Using app-managed FFmpeg 8.1.3 (Jellyfin build, GPLv3).
+        </p>
+      )}
+      <button
+        className="button secondary"
+        onClick={() => {
+          void window.desktop.shorts
+            .openFFmpegSource()
+            .then((result) => {
+              if (!result.ok) setError(result.error.message);
+            })
+            .catch(() => setError("The FFmpeg source page could not open."));
+        }}
+      >
+        FFmpeg source and license
+      </button>
       {state?.source && draft && (
         <div className="studio-editor">
           <div className="studio-preview">

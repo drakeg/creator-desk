@@ -254,6 +254,16 @@ test("imports real CSV snapshots, explores metrics and preserves data across res
   await saveVideo();
   await expect(page.locator(".metric").first()).toContainText("1,500");
   await expect(page.locator(".analytics-table tbody tr")).toHaveCount(2);
+  await expect(
+    page.getByRole("columnheader", { name: "Impressions" }),
+  ).toBeVisible();
+  await expect(page.locator(".analytics-table tbody tr").first()).toContainText(
+    "15,000",
+  );
+  await page.getByRole("button", { name: "Impressions", exact: true }).click();
+  await expect(page.locator(".analytics-table tbody tr").first()).toContainText(
+    "15,000",
+  );
   await page.screenshot({ path: "test-results/imported-videos.png" });
   await page.getByLabel("Search report").fill("honest");
   await expect(page.locator(".analytics-table tbody tr")).toHaveCount(1);
@@ -609,8 +619,30 @@ test("creates an AI-suggested vertical Short with real local media processing", 
       });
     }, path);
   }
-  await choose(ffmpeg);
-  await page.getByRole("button", { name: "Choose installed FFmpeg" }).click();
+  const setupArchive = resolve(
+    ".cache/media-setup",
+    `${process.platform}-${process.arch}`,
+    process.platform === "win32" ? "download.zip" : "download.tar.xz",
+  );
+  await app.evaluate(async (_electron, archive) => {
+    const { readFileSync } = process.getBuiltinModule("node:fs");
+    const bytes = readFileSync(archive);
+    globalThis.fetch = async (url) => {
+      if (
+        !String(url).startsWith(
+          "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v8.1.3-2/",
+        )
+      )
+        throw new Error("Unexpected setup destination");
+      return new Response(bytes);
+    };
+  }, setupArchive);
+  await page
+    .getByRole("button", { name: "Set up FFmpeg", exact: true })
+    .click();
+  await expect(
+    page.getByText("Using app-managed FFmpeg 8.1.3 (Jellyfin build, GPLv3)."),
+  ).toBeVisible({ timeout: 30000 });
   await choose(source);
   await page.getByRole("button", { name: "Choose source video" }).click();
   await expect(page.getByLabel("Short title")).toBeVisible();
@@ -809,6 +841,9 @@ test("creates an AI-suggested vertical Short with real local media processing", 
   await launch();
   await page.getByRole("button", { name: "Studio", exact: true }).click();
   await expect(page.getByLabel("Short title")).toHaveValue("A strong moment");
+  await expect(
+    page.getByText("Using app-managed FFmpeg 8.1.3 (Jellyfin build, GPLv3)."),
+  ).toBeVisible();
   const savedTranscript = await page.evaluate(() =>
     window.desktop.shorts.get(),
   );

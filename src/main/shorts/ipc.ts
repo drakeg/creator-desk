@@ -1,4 +1,4 @@
-import { dialog, type BrowserWindow } from "electron";
+import { dialog, shell, type BrowserWindow } from "electron";
 import { z } from "zod";
 import {
   clip,
@@ -8,6 +8,7 @@ import {
 } from "../../shared/shorts";
 import { CoreError } from "../../shared/contracts";
 import { Shorts } from "./service";
+import { mediaSourceURL } from "../../../scripts/media-distribution.mjs";
 type Register = (
   name: string,
   schema: z.ZodType,
@@ -27,6 +28,11 @@ export function registerShorts(
     return result.canceled ? null : result.filePaths[0] || null;
   };
   const purpose = z.object({ purpose: aiPurpose }).strict();
+  handle("shortsSetupFFmpeg", z.undefined(), () => shorts.setupTool());
+  handle("shortsMediaSource", z.undefined(), async () => {
+    await shell.openExternal(mediaSourceURL);
+    return null;
+  });
   handle("shortsGet", z.undefined(), () => shorts.state());
   handle("shortsChooseFFmpeg", z.undefined(), async () => {
     const path = await choose(

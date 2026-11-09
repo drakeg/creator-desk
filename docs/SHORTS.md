@@ -1,10 +1,12 @@
 # Shorts Studio
 
-Creator Desk 0.8 prioritizes turning existing long videos into Shorts. Manual editing and export are local and do not require AI. AI can transcribe audio and suggest clips, but suggestions are drafts to review before exporting.
+Creator Desk 0.9 prioritizes turning existing long videos into Shorts. Manual editing and export are local and do not require AI. AI can transcribe audio and suggest clips, but suggestions are drafts to review before exporting.
 
 ## Local media setup
 
-Install FFmpeg separately and choose its executable in Studio. On Apple Silicon Macs it is commonly `/opt/homebrew/bin/ffmpeg`; Windows users select `ffmpeg.exe`. Use an FFmpeg build with H.264 (`libx264`), AAC, and libass/subtitles support for burned captions. The application does not download or bundle a media-processing executable. [Official FFmpeg downloads](https://ffmpeg.org/download.html).
+Choose **Set up FFmpeg** in Studio for an app-managed installation. The app downloads the pinned Jellyfin FFmpeg 8.1.3-2 portable build for your operating system/architecture (about 33–69 MB), verifies its exact size and SHA-256 checksum, extracts only FFmpeg, and checks its version/codec support before making it available. No administrator access or system-wide installation is required. Setup needs internet access once; processing stays local afterward. Cancelled or failed setup removes temporary files and preserves previous installations. Studio also accepts an existing FFmpeg executable as an advanced option; **Use app-managed FFmpeg** switches back after successful setup.
+
+Downloads come directly from [Jellyfin's upstream release](https://github.com/jellyfin/jellyfin-ffmpeg/releases/tag/v8.1.3-2); binaries are not bundled or rehosted in Creator Desk installers. The Studio **FFmpeg source and license** button opens the matching GPLv3 [source/build information](https://github.com/jellyfin/jellyfin-ffmpeg/tree/v8.1.3-2). Version/target URLs and checksums are pinned in scripts/media-distribution.mjs. Setup uses the operating system's tar utility (including Windows tar); an unavailable utility produces a setup error and leaves the manual-executable option available. Managed tools live in the local data directory's media-tools folder and are excluded from database backups.
 
 Choose MP4/MOV/M4V or WebM, up to six hours / 20 GB. One source draft is retained per workspace. Replacing the source resets that draft and transcript. Originals remain at their selected locations and are never modified; moving or changing a source requires selecting it again.
 

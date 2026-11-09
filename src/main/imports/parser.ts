@@ -20,6 +20,7 @@ const aliases: Record<string, string> = {
   watchhours: "watchHours",
   subscribers: "subscribers",
   impressions: "impressions",
+  "thumbnail impressions": "impressions",
 };
 function bad(message: string): never {
   throw new CoreError("INVALID_INPUT", message);
@@ -306,14 +307,14 @@ export function parseImport(text: string, fileName: string): ParsedReport {
     bad("This file exceeds the 20,000-record import limit.");
   if (skipped)
     warnings.push(
-      `Skipped ${skipped} Total row(s) to avoid counting the same data twice.`,
+      `Excluded ${skipped} summary Total row(s); metrics below sum individual records only.`,
     );
   const sum = rows.reduce((n, r) => n + r.views, 0);
   if (!Number.isSafeInteger(sum))
     bad("The total views exceed the supported numeric range.");
   if (totalViews !== null && totalViews !== sum)
     warnings.push(
-      "The reported Total differs from the row sum. This export may be a subset; dashboard totals use imported rows only.",
+      `The export reports ${Number(totalViews).toLocaleString("en-US")} total views; its individual records sum to ${sum.toLocaleString("en-US")} (${Math.abs(totalViews - sum).toLocaleString("en-US")} ${totalViews > sum ? "fewer" : "more"}). This export may be a subset; dashboard totals use imported rows only.`,
     );
   if (rows.length >= 500)
     warnings.push(
