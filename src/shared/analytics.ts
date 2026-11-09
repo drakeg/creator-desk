@@ -152,6 +152,7 @@ export const dashboardInput = z
       .enum([
         "views",
         "watchHours",
+        "impressions",
         "subscribers",
         "published",
         "title",

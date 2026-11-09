@@ -92,11 +92,14 @@ export interface ShortsState {
   error: string | null;
   notice: string | null;
   ffmpegReady: boolean;
+  ffmpegManaged: boolean;
   providers: Partial<Record<AiPurpose, AiStatus>>;
 }
 export interface ShortsAPI {
   get(): Promise<import("./contracts").Result<ShortsState>>;
   chooseVideo(): Promise<import("./contracts").Result<ShortsState>>;
+  setupFFmpeg(): Promise<import("./contracts").Result<ShortsState>>;
+  openFFmpegSource(): Promise<import("./contracts").Result<null>>;
   chooseFFmpeg(): Promise<import("./contracts").Result<ShortsState>>;
   importTranscript(): Promise<import("./contracts").Result<ShortsState>>;
   updateCue(

@@ -62,3 +62,15 @@ describe("report parser", () => {
     expect(() => parseImport(text, "a.csv")).toThrow(),
   );
 });
+
+it("imports Studio thumbnail impressions and explains exact total differences", () => {
+  const r = parseImport(
+    "Content,Video title,Views,Thumbnail impressions\nTotal,,100,1000\na,A,80,900\n",
+    "table.csv",
+  );
+  expect(r.rows[0].impressions).toBe(900);
+  expect(r.metrics).toContain("impressions");
+  expect(r.warnings.join(" ")).not.toContain("unsupported");
+  expect(r.warnings.join(" ")).toContain("20 fewer");
+  expect(r.warnings.join(" ")).toContain("100 total views");
+});

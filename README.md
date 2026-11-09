@@ -1,10 +1,10 @@
-# Creator Desk 0.8.0 (development)
+# Creator Desk 0.9.0 (development)
 
 An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research tools remain planned.
 
 ## Create Shorts
 
-Open **Studio**. Select an installed FFmpeg executable, then choose an MP4, MOV, M4V, or WebM source. Trim 1–180 seconds, adjust vertical framing, and export a 720×1280 H.264/AAC MP4. Timed captions can be burned into the video and also export as a uniquely named SRT sidecar. Your original video is never modified.
+Open **Studio** and choose **Set up FFmpeg** for a verified download managed by the app, or select an existing FFmpeg executable. Then choose an MP4, MOV, M4V, or WebM source. Trim 1–180 seconds, adjust vertical framing, and export a 720×1280 H.264/AAC MP4. Timed captions can be burned into the video and also export as a uniquely named SRT sidecar. Your original video is never modified.
 
 Open **Review timed transcript** to search captions, play a moment, set clip boundaries, or correct text and timing. Save a caption correction locally before exporting; old AI suggestions are cleared when the transcript changes.
 
@@ -34,6 +34,8 @@ This stage retrieves channel views, subscriber count (which may be rounded or hi
 In YouTube Studio, go to Analytics → Advanced mode, choose the reporting period, then Export current view → CSV. Unzip the export and select a video table or a daily channel report inside Creator Desk's Dashboard → Import report.
 
 For video tables, enter the period used in Studio or explicitly select unknown/lifetime. A publication date is not the date on which views occurred. Video-table exports provide period totals, so arbitrary metric date filtering is offered only for daily reports.
+
+Thumbnail impressions are supported under both **Impressions** and **Thumbnail impressions**. Re-import older reports to populate values previously ignored. Duration and thumbnail click-through rate remain unsupported and are disclosed in the preview.
 
 Supported English fields: Content (or Video ID/id), Video title/title, Video publish time/published, Date, Views, Watch time (hours)/watchHours, Subscribers, Impressions. Views and the report identity columns are required. English decimals are supported, including quoted thousands separators. ISO dates and English dates such as Oct 10, 2026 are accepted. CSV quoting, multiline titles, BOM, CRLF, comma/tab/semicolon delimiters, and UTF-8/UTF-16 input are handled. Unsupported columns are disclosed and ignored.
 

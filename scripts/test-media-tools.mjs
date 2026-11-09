@@ -42,3 +42,21 @@ chmodSync(path, 0o755);
 if (process.env.GITHUB_ENV)
   appendFileSync(process.env.GITHUB_ENV, `CREATOR_DESK_TEST_FFMPEG=${path}\n`);
 console.log("Verified synthetic-test FFmpeg");
+
+// Archive fixture for the in-app setup test. Never included in packaged apps.
+const { mediaDistribution } = await import("./media-distribution.mjs");
+const distribution = mediaDistribution(process.platform, process.arch);
+const archiveDir = resolve(".cache/media-setup", target);
+mkdirSync(archiveDir, { recursive: true });
+const archive = resolve(archiveDir, `download.${distribution.extension}`);
+if (!existsSync(archive)) {
+  const response = await globalThis.fetch(distribution.url);
+  if (!response.ok) throw new Error("FFmpeg setup fixture download failed");
+  writeFileSync(archive, Buffer.from(await response.arrayBuffer()));
+}
+if (
+  createHash("sha256").update(readFileSync(archive)).digest("hex") !==
+  distribution.sha256
+)
+  throw new Error("FFmpeg setup fixture checksum mismatch");
+console.log("Verified in-app FFmpeg setup archive fixture");

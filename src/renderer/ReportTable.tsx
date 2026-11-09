@@ -57,6 +57,7 @@ export function ReportTable({
                   { key: "views", label: "Views" },
                   { key: "watchHours", label: "Watch time (h)" },
                   { key: "subscribers", label: "Subscribers" },
+                  { key: "impressions", label: "Impressions" },
                   ...(daily ? [] : [{ key: "published", label: "Published" }]),
                 ] as {
                   key: NonNullable<DashboardInput["sort"]>;
@@ -92,6 +93,7 @@ export function ReportTable({
                 <td>{number(r.views)}</td>
                 <td>{number(r.watchHours, 2)}</td>
                 <td>{number(r.subscribers)}</td>
+                <td>{number(r.impressions)}</td>
                 {!daily && <td>{r.published ?? "—"}</td>}
               </tr>
             ))}

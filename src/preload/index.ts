@@ -4,6 +4,8 @@ const core: DesktopCore = {
   shorts: Object.freeze({
     get: () => ipcRenderer.invoke("core:shortsGet"),
     chooseVideo: () => ipcRenderer.invoke("core:shortsChooseVideo"),
+    setupFFmpeg: () => ipcRenderer.invoke("core:shortsSetupFFmpeg"),
+    openFFmpegSource: () => ipcRenderer.invoke("core:shortsMediaSource"),
     chooseFFmpeg: () => ipcRenderer.invoke("core:shortsChooseFFmpeg"),
     importTranscript: () => ipcRenderer.invoke("core:shortsImportTranscript"),
     updateCue: (input: Parameters<DesktopCore["shorts"]["updateCue"]>[0]) =>

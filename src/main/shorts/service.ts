@@ -34,6 +34,7 @@ import { atomicWrite, openRegularFile } from "../storage/files";
 import { AI } from "./ai";
 import { demuxer, durationFromProbe, filters, runFFmpeg } from "./ffmpeg";
 import { parseTranscript, validateCues, srt } from "./transcript";
+import { managedMediaPath, installMedia } from "./media-setup";
 const sourceSchema = z.object({
   path: z.string().max(4000).refine(isAbsolute),
   name: z.string().max(255),
@@ -99,7 +100,9 @@ export class Shorts {
   }
   executable() {
     const saved = this.store.setting<string>("ffmpeg-executable", "");
-    return saved && isAbsolute(saved) && existsSync(saved) ? saved : null;
+    if (saved && isAbsolute(saved) && existsSync(saved)) return saved;
+    const managed = managedMediaPath(this.store.root);
+    return existsSync(managed) ? managed : null;
   }
   private tool() {
     const path = this.executable();
@@ -109,6 +112,22 @@ export class Shorts {
         "Select your installed FFmpeg executable first.",
       );
     return path;
+  }
+  setupTool() {
+    return this.start(
+      "Setting up FFmpeg",
+      async (_id, signal, progress) => {
+        await installMedia(this.store.root, signal, progress);
+        this.store.transaction(() =>
+          this.store.db
+            .prepare("DELETE FROM settings WHERE key=?")
+            .run("ffmpeg-executable"),
+        );
+        this.notice =
+          "FFmpeg is ready. Choose a source video to create Shorts.";
+      },
+      false,
+    );
   }
   async chooseTool(path: string) {
     if (this.job)
@@ -175,6 +194,7 @@ export class Shorts {
       error: this.error,
       notice: this.notice,
       ffmpegReady: !!this.executable(),
+      ffmpegManaged: this.executable() === managedMediaPath(this.store.root),
       providers: this.ai.status(),
     };
   }
@@ -319,11 +339,12 @@ export class Shorts {
       signal: AbortSignal,
       progress: (n: number) => void,
     ) => Promise<void>,
+    needsSource = true,
   ) {
     if (this.job)
       throw new CoreError("INVALID_INPUT", "A Shorts job is already running.");
     const id = this.workspace();
-    this.source(id);
+    if (needsSource) this.source(id);
     this.error = null;
     this.notice = null;
     const controller = new AbortController();
