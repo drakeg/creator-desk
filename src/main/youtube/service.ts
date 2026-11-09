@@ -16,6 +16,7 @@ import {
   type Client,
   type Tokens,
 } from "./oauth";
+import { History, historicalDaily } from "./history";
 import { Reports } from "../imports/reports";
 import { dailyReport, uploadReport } from "./report-data";
 import { dailySyncInput, type DailySyncInput } from "../../shared/youtube";
@@ -33,7 +34,10 @@ const channels = z.object({
     .array(
       z.object({
         id: channelSnapshot.shape.id,
-        snippet: z.object({ title: z.string().min(1).max(200) }),
+        snippet: z.object({
+          title: z.string().min(1).max(200),
+          publishedAt: z.iso.datetime({ offset: true }).optional(),
+        }),
         statistics: z.object({
           viewCount: count.optional(),
           subscriberCount: count.optional(),
@@ -51,6 +55,10 @@ type Authorize = (
   transport?: Transport,
 ) => Promise<Tokens>;
 export class YouTube {
+  private syncs = new Map<
+    string,
+    { controller: AbortController; message: string }
+  >();
   private attempts = new Map<string, AbortController>();
   private errors = new Map<string, string>();
   constructor(
@@ -87,6 +95,10 @@ export class YouTube {
       pending: !!id && this.attempts.has(id),
       error: id ? this.errors.get(id) || null : null,
       snapshot: parsed.success ? parsed.data : null,
+      sync:
+        id && this.syncs.has(id)
+          ? { message: this.syncs.get(id)!.message }
+          : null,
     };
   }
   configure(input: unknown) {
@@ -163,6 +175,8 @@ export class YouTube {
     return this.state();
   }
   cancelAll() {
+    for (const job of this.syncs.values()) job.controller.abort();
+    this.syncs.clear();
     for (const controller of this.attempts.values()) controller.abort();
     this.attempts.clear();
     this.errors.clear();
@@ -177,6 +191,7 @@ export class YouTube {
   disconnect() {
     const id = this.workspace();
     this.cancel();
+    this.syncs.get(id)?.controller.abort();
     this.vault.delete(key(id));
     this.store.transaction(() =>
       this.store.db
@@ -202,6 +217,11 @@ export class YouTube {
         this.transport,
         access.scopes,
       );
+      if (!this.vault.has(key(id)) || this.vault.get(key(id)) !== saved)
+        throw new CoreError(
+          "CANCELLED",
+          "The channel connection changed. Try again.",
+        );
       this.vault.set(key(id), JSON.stringify({ ...account, tokens: access }));
     }
     if (analytics && !access.scopes.includes(ANALYTICS_SCOPE))
@@ -211,7 +231,10 @@ export class YouTube {
       );
     return access.access_token;
   }
-  async sync() {
+  async sync(
+    transport: Transport = this.transport,
+    guard: () => void = () => {},
+  ) {
     const id = this.workspace();
     const access = await this.access(id);
     const parsed = channels.safeParse(
@@ -220,7 +243,7 @@ export class YouTube {
         {
           headers: { Authorization: `Bearer ${access}` },
         },
-        this.transport,
+        transport,
       ),
     );
     if (!parsed.success)
@@ -244,6 +267,9 @@ export class YouTube {
         : (channel.statistics.subscriberCount ?? null),
       videos: channel.statistics.videoCount ?? null,
       syncedAt: new Date().toISOString(),
+      ...(channel.snippet.publishedAt
+        ? { createdAt: channel.snippet.publishedAt }
+        : {}),
     });
     const previous = channelSnapshot
       .nullable()
@@ -253,6 +279,12 @@ export class YouTube {
         "REMOTE_ERROR",
         "The connected channel changed. Disconnect and reconnect to confirm the new channel.",
       );
+    if (this.workspace() !== id || !this.vault.has(key(id)))
+      throw new CoreError(
+        "CANCELLED",
+        "The selected channel changed. Sync again.",
+      );
+    guard();
     this.store.transaction(() =>
       this.store.db
         .prepare(
@@ -276,13 +308,13 @@ export class YouTube {
         "CANCELLED",
         "The workspace changed. Sync again in the intended workspace.",
       );
-    return new Reports(this.store).saveYouTube(data, {
+    return new Reports(this.store).saveYouTube(data!, {
       channelName: channel.title.slice(0, 100),
       channelId: channel.id,
       source: "youtube-daily",
       fileName: "YouTube daily analytics",
-      periodStart: data.rows[0]!.date,
-      periodEnd: data.rows.at(-1)!.date,
+      periodStart: data!.rows[0]!.date,
+      periodEnd: data!.rows.at(-1)!.date,
     });
   }
   async syncUploads() {
@@ -290,41 +322,14 @@ export class YouTube {
     const token = await this.access(id);
     await this.sync();
     const channel = this.state().snapshot!;
-    const url = new URL("https://www.googleapis.com/youtube/v3/channels");
-    url.search = new URLSearchParams({
-      part: "contentDetails",
-      id: channel.id,
-    }).toString();
-    const response = z
-      .object({
-        items: z
-          .array(
-            z.object({
-              id: z.literal(channel.id),
-              contentDetails: z.object({
-                relatedPlaylists: z.object({
-                  uploads: z.string().regex(/^[A-Za-z0-9_-]{1,100}$/),
-                }),
-              }),
-            }),
-          )
-          .length(1),
-      })
-      .safeParse(
-        await googleJSON(
-          url.href,
-          { headers: { Authorization: `Bearer ${token}` } },
-          this.transport,
-        ),
-      );
-    if (!response.success)
-      throw new CoreError(
-        "REMOTE_ERROR",
-        "YouTube did not return the channel uploads playlist.",
-      );
+    const playlist = await this.uploadsPlaylist(
+      token,
+      channel.id,
+      this.transport,
+    );
     const data = await uploadReport(
       token,
-      response.data.items[0]!.contentDetails.relatedPlaylists.uploads,
+      playlist,
       channel.id,
       this.transport,
     );
@@ -341,5 +346,133 @@ export class YouTube {
       periodStart: null,
       periodEnd: null,
     });
+  }
+  private async uploadsPlaylist(
+    token: string,
+    channelId: string,
+    transport: Transport,
+  ) {
+    const url = new URL("https://www.googleapis.com/youtube/v3/channels");
+    url.search = new URLSearchParams({
+      part: "contentDetails",
+      id: channelId,
+    }).toString();
+    const response = z
+      .object({
+        items: z
+          .array(
+            z.object({
+              id: z.literal(channelId),
+              contentDetails: z.object({
+                relatedPlaylists: z.object({
+                  uploads: z.string().regex(/^[A-Za-z0-9_-]{1,100}$/),
+                }),
+              }),
+            }),
+          )
+          .length(1),
+      })
+      .safeParse(
+        await googleJSON(
+          url.href,
+          { headers: { Authorization: `Bearer ${token}` } },
+          transport,
+        ),
+      );
+    if (!response.success)
+      throw new CoreError(
+        "REMOTE_ERROR",
+        "YouTube did not return the channel uploads playlist.",
+      );
+    return response.data.items[0]!.contentDetails.relatedPlaylists.uploads;
+  }
+  history() {
+    return new History(this.store).load(this.workspace());
+  }
+  cancelSync() {
+    this.syncs.get(this.workspace())?.controller.abort();
+    return null;
+  }
+  async syncHistory() {
+    const id = this.workspace();
+    if (this.syncs.has(id))
+      throw new CoreError(
+        "INVALID_INPUT",
+        "Channel history is already syncing.",
+      );
+    const job = {
+      controller: new AbortController(),
+      message: "Reading channel details…",
+    };
+    this.syncs.set(id, job);
+    const check = () => {
+      if (
+        job.controller.signal.aborted ||
+        this.workspace() !== id ||
+        !this.vault.has(key(id))
+      )
+        throw new CoreError(
+          "CANCELLED",
+          "Sync stopped. Your previous channel history is unchanged.",
+        );
+    };
+    const transport: Transport = async (url, init) => {
+      check();
+      const response = await this.transport(url, {
+        ...init,
+        signal: init.signal
+          ? AbortSignal.any([init.signal, job.controller.signal])
+          : job.controller.signal,
+      });
+      check();
+      return response;
+    };
+    try {
+      const token = await this.access(id, true);
+      check();
+      await this.sync(transport, check);
+      check();
+      const channel = this.state().snapshot!;
+      const created = channel.createdAt?.slice(0, 10) ?? "2005-01-01";
+      const endDate = new Date(Date.now() - 86400000)
+        .toISOString()
+        .slice(0, 10);
+      const startDate = created > endDate ? endDate : created;
+      const daily = await historicalDaily(
+        token,
+        channel.id,
+        startDate,
+        endDate,
+        transport,
+        (message) => {
+          job.message = message;
+        },
+      );
+      job.message = "Reading the full video library…";
+      const playlist = await this.uploadsPlaylist(token, channel.id, transport);
+      const uploads = await uploadReport(
+        token,
+        playlist,
+        channel.id,
+        transport,
+        true,
+      );
+      check();
+      job.message = "Saving channel history…";
+      return new History(this.store).save(
+        id,
+        channel.id,
+        channel.title,
+        startDate,
+        endDate,
+        daily,
+        uploads,
+      );
+    } catch (error) {
+      check();
+      throw error;
+    } finally {
+      if (this.syncs.get(id) === job) this.syncs.delete(id);
+    }
   }
 }

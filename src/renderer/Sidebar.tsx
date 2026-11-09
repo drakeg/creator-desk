@@ -58,9 +58,9 @@ export function Sidebar({
           {selected?.name.slice(0, 1).toUpperCase() ?? "W"}
         </div>
         <div className="workspace-select">
-          <span>WORKSPACE</span>
+          <span>CHANNEL</span>
           <label className="sr-only" htmlFor="workspace-select">
-            Current workspace
+            Current channel
           </label>
           <select
             id="workspace-select"
@@ -87,12 +87,12 @@ export function Sidebar({
       </div>
       <button
         className="new-workspace"
-        aria-label="New workspace"
+        aria-label="Add channel"
         disabled={busy || !state}
         onClick={onCreate}
       >
         <Plus size={16} />
-        <span>New workspace</span>
+        <span>Add channel</span>
       </button>
       <div className="nav-label">YOUR DESK</div>
       <nav aria-label="Main navigation">
@@ -100,13 +100,24 @@ export function Sidebar({
           <button
             key={name}
             aria-current={page === name ? "page" : undefined}
-            title={collapsed ? name : undefined}
+            title={
+              ["Research", "Competitors", "Projects"].includes(name)
+                ? `${name} · Planned`
+                : collapsed
+                  ? name
+                  : undefined
+            }
             aria-label={name}
             onClick={() => navigate(name)}
             disabled={busy}
           >
             <Icon size={18} />
-            <span>{name}</span>
+            <span>
+              {name}
+              {["Research", "Competitors", "Projects"].includes(name) && (
+                <small className="nav-planned">Planned</small>
+              )}
+            </span>
           </button>
         ))}
       </nav>
@@ -129,7 +140,7 @@ export function Sidebar({
         </button>
         <div className="sidebar-footer">
           <span>
-            DESKTOP PREVIEW <span className="version">0.10</span>
+            DESKTOP PREVIEW <span className="version">0.11</span>
           </span>
           <button
             className="icon-button"

@@ -7,6 +7,7 @@ export const channelSnapshot = z
     subscribers: z.number().int().nonnegative().nullable(),
     videos: z.number().int().nonnegative().nullable(),
     syncedAt: z.iso.datetime(),
+    createdAt: z.iso.datetime({ offset: true }).optional(),
   })
   .strict();
 export type ChannelSnapshot = z.infer<typeof channelSnapshot>;
@@ -18,9 +19,10 @@ export interface YouTubeState {
   pending: boolean;
   error: string | null;
   snapshot: ChannelSnapshot | null;
+  sync?: { message: string } | null;
 }
 
-import { dateOnly } from "./analytics";
+import { dateOnly, parsedReport } from "./analytics";
 export const dailySyncInput = z
   .object({ startDate: dateOnly, endDate: dateOnly })
   .strict()
@@ -37,3 +39,19 @@ export interface SyncReportResult {
   reportId: string;
   duplicate: boolean;
 }
+
+export const historyPointer = z
+  .object({
+    channelId: channelSnapshot.shape.id,
+    startDate: dateOnly,
+    endDate: dateOnly,
+    syncedAt: z.iso.datetime(),
+    dailyId: z.uuid().nullable(),
+    uploadsId: z.uuid().nullable(),
+  })
+  .strict();
+export const channelHistory = historyPointer.extend({
+  daily: parsedReport.nullable(),
+  uploads: parsedReport.nullable(),
+});
+export type ChannelHistory = z.infer<typeof channelHistory>;

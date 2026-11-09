@@ -135,7 +135,15 @@ export const reportSummary = z
     importedAt: z.iso.datetime(),
     displayName: z.string().trim().min(1).max(100).optional(),
     deletedAt: z.iso.datetime().optional(),
-    source: z.enum(["import", "youtube-daily", "youtube-uploads"]).optional(),
+    source: z
+      .enum([
+        "import",
+        "youtube-daily",
+        "youtube-uploads",
+        "youtube-history-daily",
+        "youtube-history-uploads",
+      ])
+      .optional(),
     channelId: z
       .string()
       .regex(/^UC[A-Za-z0-9_-]{22}$/)
@@ -155,7 +163,7 @@ export const reportSummary = z
       !v.source ||
       v.source === "import" ||
       (!!v.channelId &&
-        (v.source === "youtube-daily"
+        (["youtube-daily", "youtube-history-daily"].includes(v.source)
           ? v.kind === "daily"
           : v.kind === "videos" && v.periodStart === null)),
     "Invalid YouTube report provenance.",

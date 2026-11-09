@@ -429,7 +429,7 @@ export function ShortsStudio() {
         ))}
       </section>
       <p className="field-note">
-        Shorts drafts are saved per workspace. Source videos, transcripts, and
+        Shorts drafts are saved per channel. Source videos, transcripts, and
         Shorts drafts are outside current database backups; keep your source and
         exported files separately. AI keys are excluded from backups.
       </p>

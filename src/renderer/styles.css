@@ -1701,3 +1701,48 @@ dialog {
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
+
+.channel-dashboard > section,
+.channel-dashboard > details,
+.channel-dashboard > .field-note {
+  margin-top: 28px;
+}
+.channel-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.channel-sync {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.channel-sync .setting-row {
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.channel-sync .youtube-actions {
+  margin: 0;
+}
+.channel-totals {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.channel-dashboard .metric-grid {
+  margin-bottom: 20px;
+}
+.channel-dashboard .library-header select {
+  margin-left: 8px;
+  max-width: 100%;
+}
+.nav-planned {
+  font-size: 10px;
+  margin-left: 8px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.channel-dashboard .table-footer > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

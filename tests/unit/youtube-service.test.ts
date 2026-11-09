@@ -318,3 +318,102 @@ it("checks protected token storage before starting browser consent with an app c
   expect(started).toBe(false);
   expect(youtube.state().pending).toBe(false);
 });
+
+it("publishes all-history sync atomically and preserves it on failure, cancellation and channel switching", async () => {
+  const { SCOPES } = await import("../../src/main/youtube/oauth");
+  let fail = false,
+    hold = false;
+  let release: (() => void) | undefined;
+  const { store, vault, youtube } = setup(async (raw) => {
+    const url = new URL(raw);
+    if (url.pathname.endsWith("/channels"))
+      return Response.json({
+        items:
+          url.searchParams.get("part") === "contentDetails"
+            ? [
+                {
+                  id: channel.id,
+                  contentDetails: {
+                    relatedPlaylists: { uploads: "UUfixture" },
+                  },
+                },
+              ]
+            : [
+                {
+                  ...channel,
+                  snippet: {
+                    ...channel.snippet,
+                    publishedAt: "2025-01-01T00:00:00Z",
+                  },
+                },
+              ],
+      });
+    if (url.hostname === "youtubeanalytics.googleapis.com") {
+      if (hold) {
+        hold = false;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+      if (fail) return Response.json({}, { status: 503 });
+      const start = url.searchParams.get("startDate")!;
+      return Response.json({
+        columnHeaders: [
+          "day",
+          "views",
+          "estimatedMinutesWatched",
+          "subscribersGained",
+          "subscribersLost",
+        ].map((name, i) => ({
+          name,
+          columnType: i ? "METRIC" : "DIMENSION",
+          dataType: i ? "INTEGER" : "STRING",
+        })),
+        rows: [[start, 20, 120, 3, 1]],
+      });
+    }
+    if (url.pathname.endsWith("/playlistItems"))
+      return Response.json({ items: [] });
+    throw new Error("Unexpected URL");
+  });
+  const id = store.state().selectedWorkspaceId!;
+  vault.set(
+    `youtube-${id}`,
+    JSON.stringify({
+      client,
+      tokens: {
+        access_token: "fixture",
+        refresh_token: "fixture",
+        expiresAt: Date.now() + 3600000,
+        scopes: SCOPES,
+      },
+    }),
+  );
+  const original = await youtube.syncHistory();
+  expect(original.daily?.rows.length).toBeGreaterThan(1);
+  expect(youtube.history()).toEqual(original);
+  expect(youtube.state().sync).toBe(null);
+  fail = true;
+  await expect(youtube.syncHistory()).rejects.toThrow();
+  expect(youtube.history()).toEqual(original);
+  fail = false;
+  hold = true;
+  const cancelled = youtube.syncHistory();
+  while (!release) await new Promise((r) => setTimeout(r, 0));
+  expect(youtube.state().sync?.message).toContain("Reading daily");
+  await expect(youtube.syncHistory()).rejects.toThrow("already syncing");
+  youtube.cancelSync();
+  (release as unknown as () => void)();
+  await expect(cancelled).rejects.toThrow("Sync stopped");
+  expect(youtube.history()).toEqual(original);
+  hold = true;
+  release = undefined;
+  const switched = youtube.syncHistory();
+  while (!release) await new Promise((r) => setTimeout(r, 0));
+  store.create({ name: "Other channel" });
+  (release as unknown as () => void)();
+  await expect(switched).rejects.toThrow("Sync stopped");
+  expect(youtube.history()).toBe(null);
+  store.select({ id });
+  expect(youtube.history()).toEqual(original);
+});

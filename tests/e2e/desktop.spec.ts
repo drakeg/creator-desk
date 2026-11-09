@@ -54,12 +54,13 @@ test.afterEach(async () => {
   rmSync(data, { recursive: true, force: true });
 });
 async function create(name: string) {
-  await page.getByLabel("Workspace name", { exact: true }).fill(name);
+  await page.getByLabel("Channel name", { exact: true }).fill(name);
   await page
-    .getByRole("button", { name: "Create workspace", exact: true })
+    .locator("#main-content")
+    .getByRole("button", { name: "Add channel", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Bring your channel into focus." }),
+    page.getByRole("heading", { name: "Connect your YouTube channel" }),
   ).toBeVisible();
 }
 test("offline onboarding, settings and workspace selection survive restart", async () => {
@@ -73,37 +74,33 @@ test("offline onboarding, settings and workspace selection survive restart", asy
   await create("Mad Mallards Adventures");
   await page.getByLabel("Settings", { exact: true }).click();
   await page
-    .getByLabel("Workspace name", { exact: true })
+    .getByLabel("Channel name", { exact: true })
     .fill("Mad Mallards — Montréal");
   await page.getByRole("button", { name: "Save name" }).click();
-  await expect(page.getByRole("status")).toContainText("Workspace name saved");
+  await expect(page.getByRole("status")).toContainText("Channel name saved");
   await page.getByRole("button", { name: "Dark", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Dark", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await page
-    .getByRole("button", { name: "New workspace", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Add channel", exact: true }).click();
   const modal = page.getByRole("dialog");
-  await modal.getByLabel("Workspace name").fill("Second channel");
-  await modal
-    .getByRole("button", { name: "Create workspace", exact: true })
-    .click();
+  await modal.getByLabel("Channel name").fill("Second channel");
+  await modal.getByRole("button", { name: "Add channel", exact: true }).click();
   await expect(modal).not.toBeVisible();
   await page
-    .getByLabel("Current workspace")
+    .getByLabel("Current channel")
     .selectOption({ label: "Mad Mallards — Montréal" });
   await app.close();
   await launch();
   await page.getByLabel("Settings", { exact: true }).click();
-  await expect(page.getByLabel("Workspace name")).toHaveValue(
+  await expect(page.getByLabel("Channel name")).toHaveValue(
     "Mad Mallards — Montréal",
   );
   await expect(
     page.getByRole("button", { name: "Dark", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    page.getByLabel("Current workspace").locator("option"),
+    page.getByLabel("Current channel").locator("option"),
   ).toHaveCount(2);
   await page.screenshot({ path: "test-results/settings-dark.png" });
   await page.getByRole("button", { name: "Light", exact: true }).click();
@@ -128,7 +125,9 @@ test("offline onboarding, settings and workspace selection survive restart", asy
     page.getByRole("button", { name: "Expand sidebar" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Research", exact: true }).click();
-  await expect(page.getByText("Planned", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(".module-banner").getByText("Planned", { exact: true }),
+  ).toBeVisible();
 });
 test("backup preview, cancellation, restore and restart use real SQLite data", async () => {
   await create("Original workspace");
@@ -148,16 +147,14 @@ test("backup preview, cancellation, restore and restart use real SQLite data", a
   expect(JSON.parse(readFileSync(path, "utf8")).workspaces[0].name).toBe(
     "Original workspace",
   );
-  await page.getByLabel("Workspace name").fill("Newer workspace");
+  await page.getByLabel("Channel name").fill("Newer workspace");
   await page.getByRole("button", { name: "Save name" }).click();
-  await expect(page.getByRole("status")).toContainText("Workspace name saved");
+  await expect(page.getByRole("status")).toContainText("Channel name saved");
   await page.getByRole("button", { name: "Choose backup" }).click();
   await expect(page.getByRole("dialog")).toContainText("Original workspace");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(page.getByLabel("Workspace name")).toHaveValue(
-    "Newer workspace",
-  );
+  await expect(page.getByLabel("Channel name")).toHaveValue("Newer workspace");
   await page.getByRole("button", { name: "Choose backup" }).click();
   await page.getByRole("button", { name: "Restore all data" }).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
@@ -165,7 +162,7 @@ test("backup preview, cancellation, restore and restart use real SQLite data", a
   await app.close();
   await launch();
   await page.getByLabel("Settings", { exact: true }).click();
-  await expect(page.getByLabel("Workspace name")).toHaveValue(
+  await expect(page.getByLabel("Channel name")).toHaveValue(
     "Original workspace",
   );
 });
@@ -218,12 +215,15 @@ test("a second launch focuses the existing instance", async () => {
     ),
   ).toBe(1);
   await expect(
-    page.getByRole("heading", { name: "Bring your channel into focus." }),
+    page.getByRole("heading", { name: "Connect your YouTube channel" }),
   ).toBeVisible();
 });
 
 test("imports real CSV snapshots, explores metrics and preserves data across restart", async () => {
   await create("Import test channel");
+  await page
+    .getByRole("button", { name: "Saved reports & imports", exact: true })
+    .click();
   async function choose(file: string) {
     await app.evaluate(
       ({ dialog }, file) => {
@@ -372,6 +372,9 @@ test("imports real CSV snapshots, explores metrics and preserves data across res
   await expect(page.locator(".metric").first()).toContainText("350");
   await app.close();
   await launch();
+  await page
+    .getByRole("button", { name: "Saved reports & imports", exact: true })
+    .click();
   await expect(page.locator(".metric").first()).toContainText("350");
   await expect(page.getByLabel("Saved report").locator("option")).toHaveCount(
     2,
@@ -387,15 +390,16 @@ test("imports real CSV snapshots, explores metrics and preserves data across res
   );
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await page
-    .getByRole("button", { name: "New workspace", exact: true })
+    .getByRole("button", { name: "Saved reports & imports", exact: true })
     .click();
+  await page.getByRole("button", { name: "Add channel", exact: true }).click();
   const createModal = page.getByRole("dialog");
-  await createModal.getByLabel("Workspace name").fill("Isolated workspace");
+  await createModal.getByLabel("Channel name").fill("Isolated workspace");
   await createModal
-    .getByRole("button", { name: "Create workspace", exact: true })
+    .getByRole("button", { name: "Add channel", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Bring your channel into focus." }),
+    page.getByRole("heading", { name: "Connect your YouTube channel" }),
   ).toBeVisible();
   await expect(page.getByLabel("Saved report")).not.toBeVisible();
   await app.evaluate(({ dialog }, file) => {
@@ -413,6 +417,9 @@ test("imports real CSV snapshots, explores metrics and preserves data across res
     .click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Saved reports & imports", exact: true })
+    .click();
   await expect(page.locator(".metric").first()).toContainText("350");
   await expect(page.getByLabel("Saved report").locator("option")).toHaveCount(
     2,
@@ -479,7 +486,7 @@ test("YouTube setup rejects invalid credentials and cached channel totals surviv
   );
   db.close();
   await launch();
-  const cached = page.getByRole("region", { name: "YouTube connection" });
+  const cached = page.getByRole("region", { name: "Channel history" });
   await expect(cached.getByText("Cached channel fixture")).toBeVisible();
   await expect(cached.getByText("12,345", { exact: true })).toBeVisible();
   await expect(cached.getByText("Unavailable", { exact: true })).toBeVisible();
@@ -544,7 +551,11 @@ test("synchronizes daily analytics and uploads through the protected main-proces
           rows: [
             ["2026-01-01", 100, 120, 5, 1],
             ["2026-01-03", 50, 60, 0, 2],
-          ],
+          ].filter(
+            (row) =>
+              String(row[0]) >= url.searchParams.get("startDate")! &&
+              String(row[0]) <= url.searchParams.get("endDate")!,
+          ),
         });
       if (url.hostname !== "www.googleapis.com")
         throw new Error("Unexpected test endpoint");
@@ -560,7 +571,10 @@ test("synchronizes daily analytics and uploads through the protected main-proces
                 }
               : {
                   id: channel,
-                  snippet: { title: "Fixture channel" },
+                  snippet: {
+                    title: "Fixture channel",
+                    publishedAt: "2026-01-01T00:00:00Z",
+                  },
                   statistics: {
                     viewCount: "999",
                     subscriberCount: "50",
@@ -592,48 +606,49 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   });
   await page.getByLabel("Settings", { exact: true }).click();
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
-  const connection = page.getByRole("region", { name: "YouTube connection" });
-  await connection.getByLabel("Report from").fill("2026-01-01");
-  await connection.getByLabel("Report to").fill("2026-01-03");
-  await connection
-    .getByRole("button", { name: "Sync daily analytics", exact: true })
-    .click();
+  const history = page.getByRole("region", { name: "Channel history" });
   await expect(
-    page.getByText("YouTube API snapshot", { exact: true }),
+    history.getByText("Channel history updated and saved locally."),
   ).toBeVisible();
-  await expect(page.getByLabel("Saved report")).toContainText(
-    "YouTube daily analytics",
-  );
-  const dashboard = await page.evaluate(() => window.desktop.getDashboard({}));
-  if (!dashboard.ok) throw new Error("Report missing");
-  expect(dashboard.value.totals).toMatchObject({
-    views: 150,
-    watchHours: 3,
-    subscribers: 2,
-    impressions: null,
-  });
-  expect(dashboard.value.series).toHaveLength(2);
-  await connection
-    .getByRole("button", { name: "Sync uploads", exact: true })
-    .click();
+  const cache = await page.evaluate(() => window.desktop.getChannelHistory());
+  if (!cache.ok || !cache.value) throw new Error("History missing");
+  expect(cache.value.daily?.rows).toHaveLength(2);
+  expect(cache.value.uploads?.rows).toHaveLength(1);
   await expect(
     page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
   ).toBeVisible();
+  await page.getByLabel("Analytics date range").selectOption("custom");
+  await page.getByLabel("From", { exact: true }).fill("2026-01-02");
+  await page.getByLabel("To", { exact: true }).fill("2026-01-03");
   await expect(
-    page.getByText("YouTube API snapshot", { exact: true }),
+    page.locator(".metric-grid").getByText("50", { exact: true }),
   ).toBeVisible();
   await page.screenshot({ path: "test-results/youtube-reports.png" });
+  await app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0]!.setBounds({ width: 1280, height: 820 }),
+  );
+  await page
+    .getByRole("button", { name: "Expand sidebar", exact: true })
+    .click();
+  await page.screenshot({ path: "test-results/channel-overview.png" });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByLabel("Search channel videos").fill("not present");
+  await expect(
+    page.getByText("No videos returned or matching this search."),
+  ).toBeVisible();
+  await page.getByLabel("Search channel videos").fill("");
   await app.close();
   await launch();
   await expect(
     page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
   ).toBeVisible();
-  await page
-    .getByLabel("Saved report")
-    .selectOption(dashboard.value.selected!.id);
   await expect(
-    page.getByText("YouTube API snapshot", { exact: true }),
-  ).toBeVisible();
+    page.getByRole("button", { name: "Sync channel history", exact: true }),
+  ).toBeEnabled();
 });
 
 test("creates an AI-suggested vertical Short with real local media processing", async () => {

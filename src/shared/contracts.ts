@@ -69,6 +69,11 @@ export interface DesktopCore {
   connectYouTube(): Promise<Result<YouTubeState>>;
   cancelYouTube(): Promise<Result<YouTubeState>>;
   disconnectYouTube(): Promise<Result<YouTubeState>>;
+  getChannelHistory(): Promise<
+    Result<import("./youtube").ChannelHistory | null>
+  >;
+  syncChannelHistory(): Promise<Result<import("./youtube").ChannelHistory>>;
+  cancelChannelSync(): Promise<Result<null>>;
   syncYouTube(): Promise<Result<YouTubeState>>;
   syncYouTubeDaily(input: DailySyncInput): Promise<Result<SyncReportResult>>;
   syncYouTubeUploads(): Promise<Result<SyncReportResult>>;

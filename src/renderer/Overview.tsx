@@ -1,9 +1,6 @@
 import {
   ArrowRight,
-  Check,
   FolderClosed,
-  HardDrive,
-  Link2,
   Sparkles,
   CircleDashed,
   Compass,
@@ -46,13 +43,9 @@ const modules = {
 export type Destination = keyof typeof modules | "Settings";
 export function Overview({
   page,
-  name,
-  openSettings,
   openDashboard,
 }: {
   page: keyof typeof modules;
-  name: string;
-  openSettings: () => void;
   openDashboard: () => void;
 }) {
   const module = modules[page];
@@ -84,42 +77,14 @@ export function Overview({
         <h2>{module.title}</h2>
         <p>{module.text}</p>
       </div>
-      <div className="setup-list">
-        <div>
-          <span className="step-icon complete">
-            <Check size={16} />
-          </span>
-          <div>
-            <strong>Workspace ready</strong>
-            <p>{name} is saved on this Mac.</p>
-          </div>
-          <span className="step-status">Complete</span>
-        </div>
-        <div>
-          <span className="step-icon">
-            <Link2 size={16} />
-          </span>
-          <div>
-            <strong>Bring your channel data</strong>
-            <p>CSV/JSON imports and a live YouTube connection.</p>
-          </div>
-          <button className="text-button" onClick={openDashboard}>
-            Open Dashboard <ArrowRight size={16} />
-          </button>
-        </div>
-        <div>
-          <span className="step-icon">
-            <HardDrive size={16} />
-          </span>
-          <div>
-            <strong>Keep your work safe</strong>
-            <p>Manage appearance, storage, and backups.</p>
-          </div>
-          <button className="text-button" onClick={openSettings}>
-            Settings
-            <ArrowRight size={16} />
-          </button>
-        </div>
+      <p>
+        This feature is not available in this version. Connecting or syncing a
+        channel does not unlock it.
+      </p>
+      <div className="youtube-actions">
+        <button className="button secondary" onClick={openDashboard}>
+          Channel overview <ArrowRight size={16} />
+        </button>
       </div>
       <p className="module-footnote">
         This module is planned. Analytics imports and YouTube connections are

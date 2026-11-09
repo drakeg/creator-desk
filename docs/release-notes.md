@@ -1,8 +1,12 @@
-Creator Desk 0.10 completes more of the imported analytics workflow.
+Creator Desk 0.11 makes the connected channel the starting point.
 
-- Imports and displays video duration and thumbnail click-through rate. Durations accept seconds or MM:SS/HH:MM:SS; CTR is validated as a percentage and shown per record. No unweighted report-wide CTR is invented.
-- Manage reports lets you rename snapshots, delete them recoverably, restore them, or confirm permanent removal. Names are independent of channel provenance, and deleted snapshots remain in database backups until permanently removed.
-- Included metrics are identified in Dashboard, and missing values stay unavailable. Re-import old exports to populate fields previously ignored.
-- Planned screens now link to the working Dashboard and accurately describe existing analytics and Shorts tools. Research, Competitors, and Projects remain planned.
+- Workspaces are now labelled Channels. Existing names, Google authorizations, saved reports and Shorts drafts are retained; each channel has separate account access.
+- Open channel overview after connecting to backfill daily history automatically. Later refreshes use one Sync channel history button with progress and Stop sync.
+- Retrieves daily views, watch time and subscriber changes from channel creation through yesterday in date batches, and follows the full uploads list. Removes the 100-upload truncation. Missing days remain unavailable and recent data may be delayed.
+- Dashboard defaults to all available daily history with date presets/custom dates, a chart, summary metrics and searchable cumulative video views. Optional exports and older snapshots are under Saved reports & imports.
+- Failed or cancelled refreshes preserve previous history; managed cache records are replaced atomically and included in database backups.
+- Research, Competitors and Projects are visibly Planned in navigation, without misleading setup checklists.
 
-Old snapshots and database backups remain readable. Downloads cover Apple Silicon/Intel macOS, Windows x64, and Debian/Ubuntu Linux x64. macOS builds are ad hoc signed and not notarized; Windows builds are unsigned. Checksums are included.
+This is the core history workflow, not every YouTube Studio report. Impressions, CTR, retention, revenue, audience and traffic-source breakdowns are not yet fetched by history sync. CSV imports can supplement supported fields. Video cumulative views are independent of daily date filters. Capacity: 20,000 uploads, 200 stored reports and 16 MB of report payloads; oversized syncs fail without truncation.
+
+Downloads cover Apple Silicon/Intel macOS, Windows x64, and Debian/Ubuntu Linux x64. macOS builds are ad hoc signed and not notarized; Windows builds are unsigned. Checksums are included.

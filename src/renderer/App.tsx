@@ -23,7 +23,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [creating, setCreating] = useState(false);
-  const [name, setName] = useState("My workspace");
+  const [name, setName] = useState("My channel");
   const [preview, setPreview] = useState<RestorePreview | null>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -122,7 +122,7 @@ export default function App() {
         navigate={navigate}
         perform={perform}
         onCreate={() => {
-          setName("New workspace");
+          setName("Add channel");
           setCreating(true);
         }}
       />
@@ -135,13 +135,12 @@ export default function App() {
           </div>
           <span className="local-badge">
             <span />
-            Local workspace
+            Local channel
           </span>
         </header>
         <main id="main-content">
           <div className="page-heading">
             <div>
-              <p className="eyebrow">CREATOR DESK</p>
               <h1 ref={titleRef} tabIndex={-1}>
                 {firstLaunch
                   ? "Make room for your next idea."
@@ -177,9 +176,7 @@ export default function App() {
           {!state ? (
             <div className="loading-state">
               <HardDrive size={28} />
-              <p>
-                {error ? "Workspace unavailable" : "Opening your workspace…"}
-              </p>
+              <p>{error ? "Channel unavailable" : "Opening your channel…"}</p>
             </div>
           ) : firstLaunch && page !== "Settings" ? (
             <section className="welcome-content">
@@ -195,7 +192,7 @@ export default function App() {
               <p className="welcome-copy">
                 A local home for your channel, research, and ideas.
                 <br />
-                Start with a workspace. Everything stays on your Mac.
+                Add your first channel. Everything stays on your Mac.
               </p>
               <form
                 className="welcome-form"
@@ -203,11 +200,11 @@ export default function App() {
                   e.preventDefault();
                   void perform(
                     () => window.desktop.createWorkspace({ name }),
-                    "Workspace created.",
+                    "Channel added.",
                   );
                 }}
               >
-                <label htmlFor="first-workspace">Workspace name</label>
+                <label htmlFor="first-workspace">Channel name</label>
                 <input
                   id="first-workspace"
                   value={name}
@@ -220,7 +217,7 @@ export default function App() {
                   className="button primary"
                   disabled={busy || !name.trim()}
                 >
-                  Create workspace
+                  Add channel
                   <ArrowRight size={17} />
                 </button>
               </form>
@@ -244,18 +241,17 @@ export default function App() {
               busy={busy}
               perform={perform}
               restore={() => void restore()}
+              openDashboard={() => navigate("Dashboard")}
             />
           ) : page === "Studio" ? (
             <ShortsStudio key={selected?.id} />
           ) : page === "Dashboard" ? (
-            <Dashboard key={selected?.id} />
-          ) : (
-            <Overview
-              page={page}
-              name={selected?.name ?? "Channel overview"}
+            <Dashboard
+              key={selected?.id}
               openSettings={() => navigate("Settings")}
-              openDashboard={() => navigate("Dashboard")}
             />
+          ) : (
+            <Overview page={page} openDashboard={() => navigate("Dashboard")} />
           )}
         </main>
         <footer className="main-footer">
@@ -268,7 +264,7 @@ export default function App() {
       </div>
       {creating && (
         <Modal
-          title="New workspace"
+          title="Add channel"
           busy={busy}
           onClose={() => setCreating(false)}
         >
@@ -285,13 +281,13 @@ export default function App() {
               e.preventDefault();
               void perform(
                 () => window.desktop.createWorkspace({ name }),
-                "Workspace created.",
+                "Channel added.",
               ).then((ok) => {
                 if (ok) setCreating(false);
               });
             }}
           >
-            <label htmlFor="new-name">Workspace name</label>
+            <label htmlFor="new-name">Channel name</label>
             <input
               id="new-name"
               value={name}
@@ -314,7 +310,7 @@ export default function App() {
                 className="button primary"
                 disabled={busy || !name.trim()}
               >
-                Create workspace
+                Add channel
               </button>
             </div>
           </form>
@@ -336,13 +332,13 @@ export default function App() {
             </div>
           )}
           <p className="dialog-copy">
-            This replaces <strong>all local workspaces and settings</strong>{" "}
-            with the backup from {new Date(preview.createdAt).toLocaleString()}.
-            A recovery backup will be saved first. Credentials, source videos,
-            and Shorts drafts are not replaced.
+            This replaces <strong>all local channels and settings</strong> with
+            the backup from {new Date(preview.createdAt).toLocaleString()}. A
+            recovery backup will be saved first. Credentials, source videos, and
+            Shorts drafts are not replaced.
           </p>
           <div className="restore-workspaces">
-            <span className="eyebrow">WORKSPACES IN THIS BACKUP</span>
+            <span className="eyebrow">CHANNELS IN THIS BACKUP</span>
             {preview.workspaces.length ? (
               <ul>
                 {preview.workspaces.map((w) => (
@@ -353,7 +349,7 @@ export default function App() {
                 ))}
               </ul>
             ) : (
-              <p>No workspaces.</p>
+              <p>No channels.</p>
             )}
           </div>
           <div className="dialog-actions">
