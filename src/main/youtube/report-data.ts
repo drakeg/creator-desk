@@ -23,12 +23,27 @@ function empty(): never {
     "YouTube returned no report rows. Try an earlier date range or check that this channel has published videos. Existing reports are preserved.",
   );
 }
+export function dailyReport(
+  token: string,
+  channelId: string,
+  input: DailySyncInput,
+  transport: Transport,
+  allowEmpty?: false,
+): Promise<ParsedReport>;
+export function dailyReport(
+  token: string,
+  channelId: string,
+  input: DailySyncInput,
+  transport: Transport,
+  allowEmpty: true,
+): Promise<ParsedReport | null>;
 export async function dailyReport(
   token: string,
   channelId: string,
   input: DailySyncInput,
   transport: Transport,
-): Promise<ParsedReport> {
+  allowEmpty = false,
+): Promise<ParsedReport | null> {
   const range = dailySyncInput.parse(input);
   const url = new URL("https://youtubeanalytics.googleapis.com/v2/reports");
   const names = [
@@ -79,7 +94,10 @@ export async function dailyReport(
     indices.slice(1).some((i) => raw.columnHeaders[i]!.columnType !== "METRIC")
   )
     invalid();
-  if (!raw.rows?.length) empty();
+  if (!raw.rows?.length) {
+    if (allowEmpty) return null;
+    empty();
+  }
   const rows = raw.rows
     .map((values) => {
       const day = dateOnly.safeParse(values[indices[0]!]);
@@ -126,16 +144,37 @@ export async function dailyReport(
     ],
   });
 }
+export function uploadReport(
+  token: string,
+  playlistId: string,
+  channelId: string,
+  transport: Transport,
+  allowEmpty?: false,
+): Promise<ParsedReport>;
+export function uploadReport(
+  token: string,
+  playlistId: string,
+  channelId: string,
+  transport: Transport,
+  allowEmpty: true,
+): Promise<ParsedReport | null>;
 export async function uploadReport(
   token: string,
   playlistId: string,
   channelId: string,
   transport: Transport,
-): Promise<ParsedReport> {
+  allowEmpty = false,
+): Promise<ParsedReport | null> {
   const headers = { Authorization: `Bearer ${token}` };
   const ids: string[] = [];
   let pageToken: string | undefined;
-  for (let page = 0; page < 2; page++) {
+  const seenPages = new Set<string>();
+  for (let page = 0; ; page++) {
+    if (page >= 400)
+      throw new CoreError(
+        "REMOTE_ERROR",
+        "This channel exceeds the current 20,000-upload capacity. Previous history is preserved.",
+      );
     const url = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
     url.search = new URLSearchParams({
       part: "contentDetails",
@@ -155,6 +194,8 @@ export async function uploadReport(
     ids.push(...result.data.items.map((i) => i.contentDetails.videoId));
     pageToken = result.data.nextPageToken;
     if (!pageToken) break;
+    if (seenPages.has(pageToken)) invalid();
+    seenPages.add(pageToken);
   }
   const unique = [...new Set(ids)];
   const rows: ParsedReport["rows"] = [];
@@ -199,7 +240,10 @@ export async function uploadReport(
       });
     }
   }
-  if (!rows.length) empty();
+  if (!rows.length) {
+    if (allowEmpty) return null;
+    empty();
+  }
   if (new Set(rows.map((r) => r.id)).size !== rows.length) invalid();
   return parsedReport.parse({
     kind: "videos",
@@ -207,11 +251,7 @@ export async function uploadReport(
     metrics: ["views"],
     warnings: [
       "YouTube Data API upload snapshot: cumulative views for returned videos, not views in a chosen reporting period. Watch time, subscriber change, and impressions are unavailable.",
-      ...(pageToken
-        ? [
-            "Limited to the first 100 uploads returned by YouTube. More uploads exist.",
-          ]
-        : []),
+
       ...(rows.length < unique.length
         ? [
             "Some listed videos were unavailable or lacked view counts and were omitted.",

@@ -104,6 +104,9 @@ function configureIPC() {
     return null;
   });
   handle("useAppGoogleClient", z.undefined(), () => youtube.useAppClient());
+  handle("getChannelHistory", z.undefined(), () => youtube.history());
+  handle("syncChannelHistory", z.undefined(), () => youtube.syncHistory());
+  handle("cancelChannelSync", z.undefined(), () => youtube.cancelSync());
   handle("getYouTube", z.undefined(), () => youtube.state());
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());

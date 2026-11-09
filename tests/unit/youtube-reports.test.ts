@@ -139,7 +139,7 @@ it("does not accept videos belonging to another channel", async () => {
   ).rejects.toThrow("invalid report");
 });
 
-it("discloses the upload cap when more playlist pages remain", async () => {
+it("reads beyond two upload pages without truncating the library", async () => {
   let pages = 0;
   const report = await uploadReport(
     "fixture",
@@ -152,11 +152,11 @@ it("discloses the upload cap when more playlist pages remain", async () => {
           items: [
             {
               contentDetails: {
-                videoId: ++pages === 1 ? "abcdefghijk" : "lmnopqrstuv",
+                videoId: `video${String(++pages).padStart(6, "0")}`,
               },
             },
           ],
-          nextPageToken: `page${pages}`,
+          ...(pages < 3 ? { nextPageToken: `page${pages}` } : {}),
         });
       return Response.json({
         items: url.searchParams
@@ -174,6 +174,7 @@ it("discloses the upload cap when more playlist pages remain", async () => {
       });
     },
   );
-  expect(pages).toBe(2);
-  expect(report.warnings.join(" ")).toContain("first 100 uploads");
+  expect(pages).toBe(3);
+  expect(report.rows).toHaveLength(3);
+  expect(report.warnings.join(" ")).not.toContain("100 uploads");
 });

@@ -1,32 +1,22 @@
 # YouTube connection
 
-This stage connects one YouTube channel per workspace and synchronizes a timestamped channel-total snapshot. Manual sync retrieves channel views, subscriber count, and video count from YouTube Data API v3. Subscriber counts can be rounded or hidden. Missing values remain unavailable. The snapshot is displayed separately from imported reports and remains readable offline. Failed requests preserve the previous snapshot.
+## Channel overview
 
-## Connect with a preconfigured app
+The interface calls workspaces **Channels**. Each channel has independent Google authorization and local history; application credentials remain shared. After sign-in, open Channel overview for the initial automatic history sync. Later refreshes use Sync channel history. It retrieves daily views, watch time and subscriber change from creation through yesterday in nonoverlapping windows, and paginates the full upload library. Missing dates are not zeros. Video views are cumulative and separate from daily date filters. Progress, cancellation, atomic replacement and offline cache are supported. CSV tools are secondary under Saved reports & imports. This does not fetch every Studio metric or analytics dimension.
 
-When the publisher includes a Desktop OAuth client, Settings shows Connect YouTube immediately. Approve both read-only permissions in your system browser; the app receives the callback automatically. End users do not need a Google Cloud project or JSON credentials. Publisher setup is documented in [GOOGLE-PUBLISHER-SETUP.md](GOOGLE-PUBLISHER-SETUP.md).
+Legacy per-report sync endpoints remain for compatibility, but the desktop interface uses the unified history workflow. The old 100-upload truncation is removed; current capacity is 20,000 uploads, with an explicit failure rather than truncation.
 
-## Set up your own Google project (advanced)
+## Connect a channel
 
-1. Create or select a Google Cloud project and enable YouTube Data API v3 and YouTube Analytics API.
-2. Configure the Google Auth Platform consent screen. If the app is in testing, add the account you will use as a test user.
-3. Create an OAuth client with application type **Desktop app**. Download its JSON credentials.
-4. Create/select a Creator Desk workspace. In Settings → YouTube connection, import the credentials JSON. Web application credentials are rejected.
-5. Choose Connect YouTube. Complete consent in the system browser, selecting the Google account or Brand Account for the channel. Return to the app and choose Sync channel.
+1. Add or select the channel area using the sidebar. Existing workspace names and data are retained.
+2. In Settings → YouTube connection, choose Connect YouTube. If the build has no publisher configuration, use the linked setup guide to enable YouTube Data API v3 and YouTube Analytics API in your Google project, configure consent/test users and import a **Desktop app** credentials JSON.
+3. Complete consent in your system browser, selecting the Google account or Brand Account for this channel and granting both read-only scopes. No Google password is entered in Creator Desk.
+4. Choose Open channel overview. The first history sync starts automatically; progress and Stop sync are shown. A failed initial attempt can be retried manually without deleting existing data.
+5. Use date presets or Custom dates for daily analytics. The video list shows cumulative views at sync, independently of the daily date filter. Saved reports & imports contains optional exports and previous snapshots.
 
-A build may use publisher-provided Desktop application configuration or an imported custom client. No real configuration is checked into source. Imported custom clients override the app default; user tokens are always protected separately. Google testing/verification requirements and quotas apply. A test-mode refresh token may expire; reconnect when Google reports revoked or expired access.
+Google application configuration is shared across channel areas, but every channel has its own sign-in. Replacing application credentials requires disconnecting all channels. If a build contains the publisher's Desktop OAuth configuration, no personal Google project is needed. See [publisher setup](GOOGLE-PUBLISHER-SETUP.md). Test-mode tokens may expire; reconnect if Google reports revoked or expired access.
 
-## Daily analytics and uploads (0.5)
-
-In Dashboard, select Report from / Report to and choose Sync daily analytics. Date ranges are inclusive and limited to 366 days. Views, estimated watch hours (converted from minutes), and net subscriber change are saved as a daily report. Missing dates remain absent; no synthetic zero rows are added. Recent metrics can be delayed. The saved report period reflects the first and last returned dates; report notes also preserve the requested range. YouTube's reporting time zone applies.
-
-Choose Sync uploads to fetch up to two upload-playlist pages (at most 100 uploads), then the matching video metadata and cumulative view counts. Videos that are unavailable or lack counts are omitted with a report note. Extra pages trigger a truncation note. These are cumulative views at sync, not views in the selected date range. Watch time, impressions, and subscriber change are unavailable for upload snapshots.
-
-Both workflows create validated, workspace-owned reports in the existing report library. Source, channel ID, and saved timestamp are shown. Identical results with identical scope/notes reuse an existing snapshot; overlapping reports are never added together. Failed or empty responses do not create partial reports. Reports survive restart and backup/restore; existing report count and storage limits apply. Backups containing API reports require Creator Desk 0.5 or later. Older import backups are accepted.
-
-Connections created in 0.4 must disconnect and reconnect to grant the additional Analytics scope. Old tokens retain their original scope; refreshing them does not silently grant Analytics access. Both requested permissions are required for new connections. Enable both APIs in the Google project. Detailed impressions and retention are not fetched by this stage.
-
-The desktop synchronization test uses isolated synthetic credentials and a controlled main-process transport; it exercises the actual renderer → IPC → service → SQLite → viewer path without using a real Google account or system keyring. Real Google consent remains a separate configuration-dependent smoke test.
+Sync retrieves daily views, watch time and subscriber change, and all available uploads. It does not retrieve impressions, CTR, retention, revenue, audience or traffic-source breakdowns. Unsupported metrics are not shown as zero. API processing delays and unavailable uploads can cause coverage differences from Studio. Managed history is replaced atomically, while imported and legacy report snapshots are retained separately. Backups containing managed history require Creator Desk 0.11 or later.
 
 ## Data and security
 
@@ -35,8 +25,8 @@ The desktop synchronization test uses isolated synthetic credentials and a contr
 - Google authorization and API endpoints are fixed in the main process. Credential JSON cannot override endpoints. The renderer receives connection state and the channel snapshot, never tokens or the client secret.
 - Application configuration and tokens are encrypted using Electron safeStorage. Linux rejects the unprotected `basic_text` backend; an unlocked system keyring is required. macOS uses Keychain and Windows uses DPAPI. Current synchronous safeStorage APIs match the existing vault and require migration before Electron 46.
 - Credentials are excluded from backups. Channel snapshots are validated database settings and are included in backups. Restoring data does not grant new Google authorization.
-- Disconnect removes the workspace's local tokens and channel snapshot, while preserving saved reports, including prior API reports. It does not revoke the Google grant for other workspaces. To revoke the grant, use your Google account's third-party connections controls.
-- Replacing application configuration requires disconnecting all connected workspaces. A channel identity change is rejected until the user explicitly disconnects and reconnects.
+- Disconnect removes the channel area's local tokens and channel snapshot, while preserving saved reports, including prior API reports. It does not revoke the Google grant for other channel areas. To revoke the grant, use your Google account's third-party connections controls.
+- Replacing application configuration requires disconnecting all connected channels. A channel identity change is rejected until the user explicitly disconnects and reconnects.
 - Remote responses are limited to 1 MB and 20 seconds per request. Errors do not return raw provider bodies or secrets to the UI.
 
 ## Verification and limits

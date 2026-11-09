@@ -243,6 +243,8 @@ export class Reports {
         "This report does not belong to the selected workspace.",
       );
     const summary = reportSummary.parse(JSON.parse(String(record.metadata)));
+    if (summary.source?.startsWith("youtube-history-"))
+      fail("Channel history is maintained by Sync channel history.");
     if (value.action === "purge") {
       if (!summary.deletedAt)
         fail(
@@ -282,7 +284,8 @@ export class Reports {
         "SELECT metadata FROM reports WHERE workspace_id=? ORDER BY rowid DESC",
       )
       .all(workspace.id)
-      .map((r) => reportSummary.parse(JSON.parse(String(r.metadata))));
+      .map((r) => reportSummary.parse(JSON.parse(String(r.metadata))))
+      .filter((r) => !r.source?.startsWith("youtube-history-"));
     const reports = allReports.filter((r) => !r.deletedAt);
     const deletedReports = allReports.filter((r) => !!r.deletedAt);
     const selected = query.reportId

@@ -19,8 +19,15 @@ interface Props {
   busy: boolean;
   perform: Perform;
   restore: () => void;
+  openDashboard: () => void;
 }
-export function Settings({ state, busy, perform, restore }: Props) {
+export function Settings({
+  state,
+  busy,
+  perform,
+  restore,
+  openDashboard,
+}: Props) {
   const workspace = state.workspaces.find(
     (w) => w.id === state.selectedWorkspaceId,
   );
@@ -31,8 +38,11 @@ export function Settings({ state, busy, perform, restore }: Props) {
         <div className="section-label">
           <span className="section-number">01</span>
           <div>
-            <h2>Workspace</h2>
-            <p>A home for your channels, research, and ideas.</p>
+            <h2>Channel</h2>
+            <p>
+              One YouTube channel, with its own Google connection, analytics,
+              and Shorts.
+            </p>
           </div>
         </div>
         {workspace ? (
@@ -43,11 +53,11 @@ export function Settings({ state, busy, perform, restore }: Props) {
               void perform(
                 () =>
                   window.desktop.renameWorkspace({ id: workspace.id, name }),
-                "Workspace name saved.",
+                "Channel name saved.",
               );
             }}
           >
-            <label htmlFor="workspace-name">Workspace name</label>
+            <label htmlFor="workspace-name">Channel name</label>
             <div className="inline-form">
               <input
                 id="workspace-name"
@@ -71,9 +81,7 @@ export function Settings({ state, busy, perform, restore }: Props) {
             </p>
           </form>
         ) : (
-          <p className="settings-body muted">
-            Create a workspace to get started.
-          </p>
+          <p className="settings-body muted">Add a channel to get started.</p>
         )}
       </section>
       <section className="settings-section">
@@ -147,7 +155,7 @@ export function Settings({ state, busy, perform, restore }: Props) {
             <div>
               <h3>Export a backup</h3>
               <p>
-                Workspace database and settings. Credentials, source videos, and
+                Channel database and settings. Credentials, source videos, and
                 Shorts drafts are excluded.
               </p>
             </div>
@@ -184,7 +192,9 @@ export function Settings({ state, busy, perform, restore }: Props) {
           </p>
         </div>
       </section>
-      {workspace && <YouTubeConnection settings />}
+      {workspace && (
+        <YouTubeConnection settings openDashboard={openDashboard} />
+      )}
       <div className="privacy-note">
         <ShieldCheck size={20} />
         <p>

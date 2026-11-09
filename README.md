@@ -1,6 +1,6 @@
-# Creator Desk 0.10.0 (development)
+# Creator Desk 0.11.0 (development)
 
-An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research tools remain planned.
+An installable desktop app for synchronizing YouTube channel history, importing supplemental analytics, and creating Shorts. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research tools remain planned.
 
 ## Create Shorts
 
@@ -16,7 +16,11 @@ In Settings, choose **Connect YouTube** if the build includes the publisher's Go
 
 If no application is configured, the in-app setup guide provides exact clickable/copyable links to create a project, enable both APIs, configure consent/test users, and download/import a Desktop app credentials JSON. See [connection setup](docs/YOUTUBE-CONNECTION.md). Publishers can configure the application once for everyone using [publisher-managed Google sign-in](docs/GOOGLE-PUBLISHER-SETUP.md).
 
-This stage retrieves channel views, subscriber count (which may be rounded or hidden), and video count. Last successful totals remain available offline and are separate from imported report periods. Daily analytics and upload snapshots are available from Dashboard after granting both read-only permissions. Analytics date ranges are limited to 366 days; uploads are capped at 100 with truncation disclosed. Retention remains later work.
+Use **Add channel** for each YouTube channel you manage. Each channel area has its own Google sign-in, cached analytics, Shorts drafts and AI permissions. Google Desktop app configuration is shared; account authorization is separate. Existing workspaces retain their names and data.
+
+After connecting, choose **Open channel overview**. The first visit automatically syncs daily views, watch time and subscriber changes from channel creation (or 2005 if creation is unavailable) through the last completed UTC day, plus every available upload. Later refreshes use **Sync channel history**. Progress and Stop sync are available. The overview defaults to all history; date presets/custom dates filter daily analytics locally. Video views are cumulative at sync and independent of those filters. CSV is not required for those core metrics.
+
+History requests use windows of at most 366 days; empty windows are accepted, and missing days are never filled with zero. Upload pagination has no 100-video truncation. Capacity remains 20,000 uploads, 200 saved reports and 16 MB of report payloads; oversized syncs fail explicitly and preserve previous history. Refresh replaces managed cache records atomically instead of accumulating snapshots. Cached history is included in database backups. Impressions, CTR, retention, revenue, audience and traffic-source breakdowns are not yet fetched by this sync.
 
 ## Working features
 
@@ -31,7 +35,7 @@ This stage retrieves channel views, subscriber count (which may be rounded or hi
 
 ## Import a Studio export
 
-In YouTube Studio, go to Analytics → Advanced mode, choose the reporting period, then Export current view → CSV. Unzip the export and select a video table or a daily channel report inside Creator Desk's Dashboard → Import report.
+In YouTube Studio, go to Analytics → Advanced mode, choose the reporting period, then Export current view → CSV. Unzip the export and select a video table or a daily channel report inside Creator Desk's Dashboard → Saved reports & imports → Import report.
 
 For video tables, enter the period used in Studio or explicitly select unknown/lifetime. A publication date is not the date on which views occurred. Video-table exports provide period totals, so arbitrary metric date filtering is offered only for daily reports.
 
