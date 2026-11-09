@@ -1,4 +1,4 @@
-# Creator Desk 0.9.0 (development)
+# Creator Desk 0.10.0 (development)
 
 An installable desktop app for importing creator analytics and synchronizing read-only YouTube channel totals. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research tools remain planned.
 
@@ -35,9 +35,9 @@ In YouTube Studio, go to Analytics → Advanced mode, choose the reporting perio
 
 For video tables, enter the period used in Studio or explicitly select unknown/lifetime. A publication date is not the date on which views occurred. Video-table exports provide period totals, so arbitrary metric date filtering is offered only for daily reports.
 
-Thumbnail impressions are supported under both **Impressions** and **Thumbnail impressions**. Re-import older reports to populate values previously ignored. Duration and thumbnail click-through rate remain unsupported and are disclosed in the preview.
+Thumbnail impressions are supported under both **Impressions** and **Thumbnail impressions**. Re-import older reports to populate values previously ignored. Duration and thumbnail click-through rate are now imported and shown per record. Duration accepts seconds or MM:SS/HH:MM:SS; CTR uses percentages from 0 to 100. Percentages are not averaged into channel totals. Re-import old snapshots to add fields previously ignored.
 
-Supported English fields: Content (or Video ID/id), Video title/title, Video publish time/published, Date, Views, Watch time (hours)/watchHours, Subscribers, Impressions. Views and the report identity columns are required. English decimals are supported, including quoted thousands separators. ISO dates and English dates such as Oct 10, 2026 are accepted. CSV quoting, multiline titles, BOM, CRLF, comma/tab/semicolon delimiters, and UTF-8/UTF-16 input are handled. Unsupported columns are disclosed and ignored.
+Supported English fields: Content (or Video ID/id), Video title/title, Video publish time/published, Date, Views, Watch time (hours)/watchHours, Subscribers, Impressions, Duration/durationSeconds, Thumbnail click-through rate (%)/ctr. Views and the report identity columns are required. English decimals are supported, including quoted thousands separators. ISO dates and English dates such as Oct 10, 2026 are accepted. CSV quoting, multiline titles, BOM, CRLF, comma/tab/semicolon delimiters, and UTF-8/UTF-16 input are handled. Unsupported columns are disclosed and ignored.
 
 JSON input is an array of objects using the same field names, for example:
 
@@ -60,7 +60,7 @@ Example files under tests/fixtures contain fictional test figures. The app never
 
 Data stays in ~/Library/Application Support/Creator Desk unless an absolute CREATOR_DESK_DATA_DIR is supplied for isolated testing. No report data is sent to a server. Native file selection is the only renderer route to importing files; it cannot submit arbitrary filesystem paths or SQL.
 
-Preview limits: 8 MB input; 20,000 data records and 100 columns per file; 200 saved reports / 16 MB of normalized report payloads across the local database. Backup format 1 holds the SQLite snapshot/settings, up to 24 MB database / 32 MB file, excluding credential files and media attachments. The report library does not yet include report deletion or metadata editing; re-import corrected metadata as a separate snapshot. Preview tokens expire after 15 minutes and are bound to their workspace.
+Preview limits: 8 MB input; 20,000 data records and 100 columns per file; 200 saved reports / 16 MB of normalized report payloads across the local database. Backup format 1 holds the SQLite snapshot/settings, up to 24 MB database / 32 MB file, excluding credential files and media attachments. Dashboard → Manage reports lets you rename a snapshot, move it to Deleted reports, restore it, or separately confirm permanent removal. Renaming preserves channel provenance. Deleted reports remain in backups and count toward storage limits until permanently removed; re-importing an identical deleted report restores it. Preview tokens expire after 15 minutes and are bound to their workspace.
 
 Migration from schema 1 saves a before-schema-2 recovery backup and updates transactionally. A failed migration preserves the prior schema. A newer schema is never silently downgraded. Imported reports are validated as part of backup inspection and included in backup/restore. Recovery backups are retained in the data directory's backups folder until removed manually.
 

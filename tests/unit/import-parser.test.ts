@@ -74,3 +74,23 @@ it("imports Studio thumbnail impressions and explains exact total differences", 
   expect(r.warnings.join(" ")).toContain("20 fewer");
   expect(r.warnings.join(" ")).toContain("100 total views");
 });
+
+it("imports durations and CTR without inventing missing values", () => {
+  const r = parseImport(
+    "Content,Video title,Views,Duration,Thumbnail click-through rate (%)\na,A,1,65,7.5\nb,B,2,01:02:03,8%\nc,C,0,,\n",
+    "table.csv",
+  );
+  expect(r.rows[0]).toMatchObject({ durationSeconds: 65, ctr: 7.5 });
+  expect(r.rows[1]).toMatchObject({ durationSeconds: 3723, ctr: 8 });
+  expect(r.rows[2]).toMatchObject({ durationSeconds: null, ctr: null });
+  expect(r.warnings.join(" ")).not.toContain("unsupported");
+  expect(() =>
+    parseImport("Content,Video title,Views,Duration\na,A,1,01:99\n", "a.csv"),
+  ).toThrow();
+  expect(() =>
+    parseImport(
+      "Content,Video title,Views,Thumbnail click-through rate (%)\na,A,1,101\n",
+      "a.csv",
+    ),
+  ).toThrow();
+});

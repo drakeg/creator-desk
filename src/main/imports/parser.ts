@@ -6,6 +6,12 @@ import {
   type ParsedReport,
 } from "../../shared/analytics";
 const aliases: Record<string, string> = {
+  duration: "durationSeconds",
+  "duration (seconds)": "durationSeconds",
+  durationseconds: "durationSeconds",
+  "thumbnail click-through rate (%)": "ctr",
+  "impressions click-through rate (%)": "ctr",
+  ctr: "ctr",
   content: "id",
   "video id": "id",
   id: "id",
@@ -151,6 +157,30 @@ function numeric(
     bad(`${label}: invalid ${integer ? "whole number" : "number"}.`);
   return n;
 }
+function durationValue(raw: unknown, label: string): number | null {
+  if (typeof raw === "string" && raw.includes(":")) {
+    if (!/^\d+:\d{2}(?::\d{2})?$/.test(raw.trim()))
+      bad(label + ": use seconds, MM:SS, or HH:MM:SS.");
+    const parts = raw.trim().split(":").map(Number);
+    if (parts.slice(1).some((n) => n >= 60))
+      bad(label + ": invalid timestamp.");
+    const result = parts.reduce((n, p) => n * 60 + p, 0);
+    if (!Number.isSafeInteger(result))
+      bad(label + ": duration exceeds the supported range.");
+    return result;
+  }
+  return numeric(raw, label, false);
+}
+function ctrValue(raw: unknown, label: string): number | null {
+  const result = numeric(
+    typeof raw === "string" ? raw.trim().replace(/%$/, "") : raw,
+    label,
+    false,
+  );
+  if (result !== null && result > 100)
+    bad(label + ": CTR must be between 0 and 100 percent.");
+  return result;
+}
 export function parseImport(text: string, fileName: string): ParsedReport {
   if (Buffer.byteLength(text, "utf8") > 8 * 1024 * 1024)
     bad("This file exceeds the 8 MB import limit.");
@@ -292,6 +322,17 @@ export function parseImport(text: string, fileName: string): ParsedReport {
         true,
         true,
       ),
+      ...(used.has("durationSeconds")
+        ? {
+            durationSeconds: durationValue(
+              record.durationSeconds,
+              `Record ${index + 2} duration`,
+            ),
+          }
+        : {}),
+      ...(used.has("ctr")
+        ? { ctr: ctrValue(record.ctr, `Record ${index + 2} CTR`) }
+        : {}),
       impressions: numeric(
         record.impressions,
         `Record ${index + 2} impressions`,
@@ -321,12 +362,19 @@ export function parseImport(text: string, fileName: string): ParsedReport {
       "Studio exports can be limited to 500 rows. Check that your export contains all the records you need.",
     );
   const metrics = (
-    ["views", "watchHours", "subscribers", "impressions"] as const
+    [
+      "views",
+      "watchHours",
+      "subscribers",
+      "impressions",
+      "durationSeconds",
+      "ctr",
+    ] as const
   ).filter((key) => used.has(key));
   const missing = metrics.filter((key) => rows.some((r) => r[key] === null));
   if (missing.length)
     warnings.push(
-      "Some metric cells are blank. Summary totals for incomplete metrics will be unavailable.",
+      "Some metric cells are blank. Missing values remain unavailable; incomplete summary metrics are not totaled.",
     );
   return parsedReport.parse({ kind, rows, warnings, metrics });
 }

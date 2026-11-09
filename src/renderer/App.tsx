@@ -254,6 +254,7 @@ export default function App() {
               page={page}
               name={selected?.name ?? "Channel overview"}
               openSettings={() => navigate("Settings")}
+              openDashboard={() => navigate("Dashboard")}
             />
           )}
         </main>

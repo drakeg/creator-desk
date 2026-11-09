@@ -1,4 +1,5 @@
 import type {
+  ManageReportInput,
   ImportPreview,
   CommitImportInput,
   DashboardInput,
@@ -76,6 +77,7 @@ export interface DesktopCore {
     input: CommitImportInput,
   ): Promise<Result<{ reportId: string; duplicate: boolean }>>;
   cancelImport(): Promise<Result<null>>;
+  manageReport(input: ManageReportInput): Promise<Result<Dashboard>>;
   getDashboard(input: DashboardInput): Promise<Result<Dashboard>>;
   createWorkspace(input: { name: string }): Promise<Result<Workspace>>;
   selectWorkspace(input: { id: string }): Promise<Result<CoreState>>;

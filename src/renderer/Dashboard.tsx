@@ -9,6 +9,7 @@ import type {
 } from "../shared/analytics";
 import { ImportDialog } from "./ImportDialog";
 import { ReportChart } from "./ReportChart";
+import { ReportManager } from "./ReportManager";
 import { ReportTable } from "./ReportTable";
 const initial: DashboardInput = {
   search: "",
@@ -135,6 +136,19 @@ export function Dashboard() {
           <HardDrive size={14} />
           Saved analytics
         </span>
+        {data && (
+          <ReportManager
+            data={data}
+            onChange={(value) => {
+              setData(value);
+              setQuery({
+                ...initial,
+                ...(value.selected ? { reportId: value.selected.id } : {}),
+              });
+              setNotice("Report library updated.");
+            }}
+          />
+        )}
         <button
           className="button primary"
           disabled={busy}
@@ -168,8 +182,8 @@ export function Dashboard() {
               >
                 {data.reports.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.channelName} · {r.kind === "daily" ? "Daily" : "Videos"}{" "}
-                    ·{" "}
+                    {r.displayName ?? r.channelName} ·{" "}
+                    {r.kind === "daily" ? "Daily" : "Videos"} ·{" "}
                     {r.periodStart
                       ? `${r.periodStart} to ${r.periodEnd}`
                       : "Period unspecified"}{" "}
@@ -185,6 +199,9 @@ export function Dashboard() {
             </span>
           </div>
           <div className="report-provenance">
+            {data.selected.displayName && (
+              <span>Original label: {data.selected.channelName}</span>
+            )}
             <span>{data.selected.fileName}</span>
             {data.selected.channelId && (
               <span>Channel {data.selected.channelId}</span>
@@ -231,6 +248,26 @@ export function Dashboard() {
                 Reset dates
               </button>
             </div>
+          )}
+          {data.availableMetrics.length > 0 && (
+            <p className="field-note">
+              Included metrics:{" "}
+              {data.availableMetrics
+                .map(
+                  (key) =>
+                    ({
+                      views: "views",
+                      watchHours: "watch time",
+                      subscribers: "subscriber change",
+                      impressions: "impressions",
+                      durationSeconds: "duration",
+                      ctr: "CTR",
+                    })[key],
+                )
+                .join(", ")}
+              . A dash means a value was not supplied; no missing values are
+              replaced with zero.
+            </p>
           )}
           <div className="metric-grid">
             {[

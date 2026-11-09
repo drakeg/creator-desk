@@ -4,6 +4,15 @@ const number = (value: number | null, digits = 0) =>
   value === null
     ? "—"
     : value.toLocaleString(undefined, { maximumFractionDigits: digits });
+function duration(value: number | null | undefined) {
+  if (value == null) return "—";
+  const seconds = Math.round(value),
+    hours = Math.floor(seconds / 3600),
+    minutes = Math.floor(seconds / 60) % 60;
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
+    : `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+}
 export function ReportTable({
   data,
   query,
@@ -58,6 +67,10 @@ export function ReportTable({
                   { key: "watchHours", label: "Watch time (h)" },
                   { key: "subscribers", label: "Subscribers" },
                   { key: "impressions", label: "Impressions" },
+                  ...(daily
+                    ? []
+                    : [{ key: "durationSeconds", label: "Duration" }]),
+                  { key: "ctr", label: "CTR (%)" },
                   ...(daily ? [] : [{ key: "published", label: "Published" }]),
                 ] as {
                   key: NonNullable<DashboardInput["sort"]>;
@@ -94,6 +107,8 @@ export function ReportTable({
                 <td>{number(r.watchHours, 2)}</td>
                 <td>{number(r.subscribers)}</td>
                 <td>{number(r.impressions)}</td>
+                {!daily && <td>{duration(r.durationSeconds)}</td>}
+                <td>{number(r.ctr ?? null, 2)}</td>
                 {!daily && <td>{r.published ?? "—"}</td>}
               </tr>
             ))}
@@ -106,7 +121,7 @@ export function ReportTable({
       <div className="table-footer">
         <span>
           — means the metric was not supplied. Publication dates are shown as
-          exported.
+          exported. CTR is shown per record, not averaged across the report.
         </span>
         <div>
           <button

@@ -14,7 +14,7 @@ import {
 const modules = {
   Dashboard: {
     title: "A clearer view of your channel.",
-    text: "Your uploads, performance, and growth will come together here. Start with a local workspace; channel imports and YouTube connections are next.",
+    text: "Import creator analytics, connect read-only YouTube data, and review your saved snapshots.",
     icon: LayoutGrid,
     stage: "Stage 1 · Channel insights",
   },
@@ -38,7 +38,7 @@ const modules = {
   },
   Studio: {
     title: "Shape your next upload.",
-    text: "Work on scripts, titles, thumbnails, and clips. Creative tools will connect to your chosen AI provider and local media.",
+    text: "Create Shorts from local videos, edit captions, and optionally use your chosen AI provider for transcription and clip suggestions.",
     icon: Clapperboard,
     stage: "Stages 3–5 · Creator tools",
   },
@@ -48,10 +48,12 @@ export function Overview({
   page,
   name,
   openSettings,
+  openDashboard,
 }: {
   page: keyof typeof modules;
   name: string;
   openSettings: () => void;
+  openDashboard: () => void;
 }) {
   const module = modules[page];
   const Icon = module.icon;
@@ -101,7 +103,9 @@ export function Overview({
             <strong>Bring your channel data</strong>
             <p>CSV/JSON imports and a live YouTube connection.</p>
           </div>
-          <span className="step-status">Coming next</span>
+          <button className="text-button" onClick={openDashboard}>
+            Open Dashboard <ArrowRight size={16} />
+          </button>
         </div>
         <div>
           <span className="step-icon">
@@ -118,8 +122,8 @@ export function Overview({
         </div>
       </div>
       <p className="module-footnote">
-        This is the desktop foundation. Channel metrics and creator tools are
-        not available in this preview.
+        This module is planned. Analytics imports and YouTube connections are
+        available in Dashboard; Shorts tools are available in Studio.
       </p>
     </div>
   );

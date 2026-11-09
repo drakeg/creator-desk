@@ -31,6 +31,7 @@ const core: DesktopCore = {
   inspectImport: () => ipcRenderer.invoke("core:inspectImport"),
   commitImport: (input) => ipcRenderer.invoke("core:commitImport", input),
   cancelImport: () => ipcRenderer.invoke("core:cancelImport"),
+  manageReport: (input) => ipcRenderer.invoke("core:manageReport", input),
   getDashboard: (input) => ipcRenderer.invoke("core:getDashboard", input),
   openGoogleSetup: (input) => ipcRenderer.invoke("core:openGoogleSetup", input),
   useAppGoogleClient: () => ipcRenderer.invoke("core:useAppGoogleClient"),

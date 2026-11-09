@@ -32,7 +32,11 @@ import { YouTube } from "./youtube/service";
 import { Store } from "./storage/store";
 import { Backups } from "./storage/backups";
 import { Reports } from "./imports/reports";
-import { commitImportInput, dashboardInput } from "../shared/analytics";
+import {
+  manageReportInput,
+  commitImportInput,
+  dashboardInput,
+} from "../shared/analytics";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -141,6 +145,7 @@ function configureIPC() {
       );
     }
   });
+  handle("manageReport", manageReportInput, (input) => reports.manage(input));
   handle("getDashboard", dashboardInput, (input) => reports.dashboard(input));
   handle("inspectImport", z.undefined(), async () => {
     const result = await dialog.showOpenDialog(window!, {
@@ -360,7 +365,7 @@ else {
                   void dialog.showMessageBox({
                     message: "Creator Desk — imported channel analytics",
                     detail:
-                      "Import CSV/JSON reports, connect read-only YouTube channel totals in Settings, and back up your data. Research and AI tools are planned.",
+                      "Import analytics, connect read-only YouTube data, create Shorts with optional user-selected AI, and back up your database. Research, Competitors and Projects are planned.",
                   });
                 },
               },
