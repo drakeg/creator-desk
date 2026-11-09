@@ -4,6 +4,7 @@ import { basename, extname } from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { CoreError } from "../../shared/contracts";
 import {
+  manageReportInput,
   commitImportInput,
   dashboardInput,
   parsedReport,
@@ -170,9 +171,24 @@ export class Reports {
       )
       .digest("hex");
     const existing = this.store.db
-      .prepare("SELECT id FROM reports WHERE workspace_id=? AND fingerprint=?")
+      .prepare(
+        "SELECT id, metadata FROM reports WHERE workspace_id=? AND fingerprint=?",
+      )
       .get(workspaceId, fingerprint);
     if (existing) {
+      const summary = reportSummary.parse(
+        JSON.parse(String(existing.metadata)),
+      );
+      if (summary.deletedAt) {
+        delete summary.deletedAt;
+        this.store.transaction(() =>
+          this.store.db
+            .prepare(
+              "UPDATE reports SET metadata=? WHERE id=? AND workspace_id=?",
+            )
+            .run(JSON.stringify(summary), summary.id, workspaceId),
+        );
+      }
       return { reportId: String(existing.id), duplicate: true };
     }
     const payload = JSON.stringify(data);
@@ -215,15 +231,60 @@ export class Reports {
     );
     return { reportId: metadata.id, duplicate: false };
   }
+  manage(input: unknown): Dashboard {
+    const value = manageReportInput.parse(input);
+    const workspaceId = this.workspace().id;
+    const record = this.store.db
+      .prepare("SELECT metadata FROM reports WHERE id=? AND workspace_id=?")
+      .get(value.reportId, workspaceId);
+    if (!record)
+      throw new CoreError(
+        "NOT_FOUND",
+        "This report does not belong to the selected workspace.",
+      );
+    const summary = reportSummary.parse(JSON.parse(String(record.metadata)));
+    if (value.action === "purge") {
+      if (!summary.deletedAt)
+        fail(
+          "Move this report to deleted reports before removing it permanently.",
+        );
+      this.store.transaction(() =>
+        this.store.db
+          .prepare("DELETE FROM reports WHERE id=? AND workspace_id=?")
+          .run(value.reportId, workspaceId),
+      );
+    } else {
+      if (value.action === "rename") {
+        if (summary.deletedAt) fail("Restore the report before renaming it.");
+        summary.displayName = value.name!;
+      } else if (value.action === "delete")
+        summary.deletedAt ??= new Date().toISOString();
+      else delete summary.deletedAt;
+      this.store.transaction(() =>
+        this.store.db
+          .prepare(
+            "UPDATE reports SET metadata=? WHERE id=? AND workspace_id=?",
+          )
+          .run(JSON.stringify(summary), value.reportId, workspaceId),
+      );
+    }
+    return this.dashboard(
+      value.action === "rename" || value.action === "restore"
+        ? { reportId: value.reportId }
+        : {},
+    );
+  }
   dashboard(input: unknown): Dashboard {
     const query = dashboardInput.parse(input);
     const workspace = this.workspace();
-    const reports = this.store.db
+    const allReports = this.store.db
       .prepare(
         "SELECT metadata FROM reports WHERE workspace_id=? ORDER BY rowid DESC",
       )
       .all(workspace.id)
       .map((r) => reportSummary.parse(JSON.parse(String(r.metadata))));
+    const reports = allReports.filter((r) => !r.deletedAt);
+    const deletedReports = allReports.filter((r) => !!r.deletedAt);
     const selected = query.reportId
       ? reports.find((r) => r.id === query.reportId)
       : reports[0];
@@ -234,6 +295,7 @@ export class Reports {
       );
     const empty: Dashboard = {
       reports,
+      deletedReports,
       selected: null,
       rows: [],
       rowCount: 0,
@@ -245,6 +307,7 @@ export class Reports {
         subscribers: null,
         impressions: null,
       },
+      availableMetrics: [],
       series: [],
       warnings: [],
     };
@@ -291,8 +354,8 @@ export class Reports {
     rows.sort((a, b) => {
       const av = a[query.sort],
         bv = b[query.sort];
-      if (av === null && bv !== null) return 1;
-      if (bv === null && av !== null) return -1;
+      if (av == null && bv != null) return 1;
+      if (bv == null && av != null) return -1;
       let comparison =
         typeof av === "number" && typeof bv === "number"
           ? av - bv
@@ -304,6 +367,7 @@ export class Reports {
     const page = Math.min(query.page, pageCount);
     return {
       reports,
+      deletedReports,
       selected,
       rows: rows.slice((page - 1) * 25, page * 25),
       rowCount: rows.length,
@@ -311,6 +375,7 @@ export class Reports {
       pageCount,
       totals,
       series,
+      availableMetrics: data.metrics,
       warnings: data.warnings,
     };
   }

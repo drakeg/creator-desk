@@ -31,6 +31,14 @@ export const metricRow = z
       .max(Number.MAX_SAFE_INTEGER)
       .nullable(),
     impressions: count,
+    durationSeconds: z
+      .number()
+      .finite()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable()
+      .optional(),
+    ctr: z.number().finite().min(0).max(100).nullable().optional(),
   })
   .strict();
 export type MetricRow = z.infer<typeof metricRow>;
@@ -40,9 +48,18 @@ export const parsedReport = z
     rows: z.array(metricRow).min(1).max(20000),
     warnings: z.array(z.string().max(500)).max(50),
     metrics: z
-      .array(z.enum(["views", "watchHours", "subscribers", "impressions"]))
+      .array(
+        z.enum([
+          "views",
+          "watchHours",
+          "subscribers",
+          "impressions",
+          "durationSeconds",
+          "ctr",
+        ]),
+      )
       .min(1)
-      .max(4),
+      .max(6),
   })
   .strict()
   .superRefine((report, ctx) => {
@@ -116,6 +133,8 @@ export const reportSummary = z
     periodStart: dateOnly.nullable(),
     periodEnd: dateOnly.nullable(),
     importedAt: z.iso.datetime(),
+    displayName: z.string().trim().min(1).max(100).optional(),
+    deletedAt: z.iso.datetime().optional(),
     source: z.enum(["import", "youtube-daily", "youtube-uploads"]).optional(),
     channelId: z
       .string()
@@ -153,6 +172,8 @@ export const dashboardInput = z
         "views",
         "watchHours",
         "impressions",
+        "durationSeconds",
+        "ctr",
         "subscribers",
         "published",
         "title",
@@ -168,8 +189,21 @@ export const dashboardInput = z
     "The start date must be on or before the end date.",
   );
 export type DashboardInput = z.input<typeof dashboardInput>;
+export const manageReportInput = z
+  .object({
+    reportId: z.uuid(),
+    action: z.enum(["rename", "delete", "restore", "purge"]),
+    name: z.string().trim().min(1).max(100).optional(),
+  })
+  .strict()
+  .refine(
+    (v) => (v.action === "rename" ? !!v.name : v.name === undefined),
+    "Supply a name only when renaming a report.",
+  );
+export type ManageReportInput = z.infer<typeof manageReportInput>;
 export interface Dashboard {
   reports: ReportSummary[];
+  deletedReports: ReportSummary[];
   selected: ReportSummary | null;
   rows: MetricRow[];
   rowCount: number;
@@ -181,6 +215,7 @@ export interface Dashboard {
     subscribers: number | null;
     impressions: number | null;
   };
+  availableMetrics: ParsedReport["metrics"];
   series: { date: string; views: number }[];
   warnings: string[];
 }

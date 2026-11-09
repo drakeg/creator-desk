@@ -264,6 +264,70 @@ test("imports real CSV snapshots, explores metrics and preserves data across res
   await expect(page.locator(".analytics-table tbody tr").first()).toContainText(
     "15,000",
   );
+  await expect(page.locator(".analytics-table tbody tr").first()).toContainText(
+    "1:05",
+  );
+  await expect(page.locator(".analytics-table tbody tr").first()).toContainText(
+    "6.25",
+  );
+  await page.getByRole("button", { name: "CTR (%)", exact: true }).click();
+  await expect(page.locator(".analytics-table tbody tr").first()).toContainText(
+    "1:02:03",
+  );
+  await page.getByRole("button", { name: "Views", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Manage reports", exact: true })
+    .click();
+  await page.getByLabel("Report name", { exact: true }).fill("Autumn review");
+  await page
+    .getByRole("button", { name: "Save report name", exact: true })
+    .click();
+  await expect(page.getByLabel("Saved report")).toContainText("Autumn review");
+  await page
+    .getByRole("button", { name: "Manage reports", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Delete selected report", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Delete selected report", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Delete report", exact: true })
+    .click();
+  await expect(page.getByLabel("Saved report")).not.toBeVisible();
+  await page
+    .getByRole("button", { name: "Manage reports", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Restore Autumn review", exact: true })
+    .click();
+  await expect(page.locator(".metric").first()).toContainText("1,500");
+  await page
+    .getByRole("button", { name: "Manage reports", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Delete selected report", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Delete report", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Manage reports", exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Permanently remove Autumn review",
+      exact: true,
+    })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("cannot be undone");
+  await page
+    .getByRole("button", { name: "Remove permanently", exact: true })
+    .click();
+  await choose("videos.csv");
+  await saveVideo();
   await page.screenshot({ path: "test-results/imported-videos.png" });
   await page.getByLabel("Search report").fill("honest");
   await expect(page.locator(".analytics-table tbody tr")).toHaveCount(1);

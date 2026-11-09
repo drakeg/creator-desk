@@ -1688,3 +1688,16 @@ dialog {
 .transcript-panel nav {
   align-items: center;
 }
+
+.deleted-reports {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  padding-top: 16px;
+}
+.deleted-reports h3 {
+  font-size: 15px;
+}
+.deleted-reports article {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}

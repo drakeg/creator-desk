@@ -168,3 +168,69 @@ it("paginates large libraries without losing the filtered totals", () => {
   expect(result.totals.views).toBe(351);
   expect(result.pageCount).toBe(2);
 });
+
+it("renames independently of provenance and recovers deleted reports", () => {
+  const { store, reports, path } = setup();
+  const p = reports.inspect(path);
+  const { reportId } = reports.commit({ ...metadata, previewId: p.previewId });
+  expect(
+    reports.manage({ reportId, action: "rename", name: "My autumn report" })
+      .selected,
+  ).toMatchObject({
+    displayName: "My autumn report",
+    channelName: metadata.channelName,
+  });
+  expect(() => reports.manage({ reportId, action: "purge" })).toThrow(
+    "deleted reports",
+  );
+  const deleted = reports.manage({ reportId, action: "delete" });
+  expect(deleted.reports).toHaveLength(0);
+  expect(deleted.deletedReports[0].displayName).toBe("My autumn report");
+  expect(deleted.selected).toBeNull();
+  expect(new Reports(store).dashboard({}).deletedReports).toHaveLength(1);
+  expect(reports.manage({ reportId, action: "restore" }).selected?.id).toBe(
+    reportId,
+  );
+  const again = reports.inspect(path);
+  expect(
+    reports.commit({ ...metadata, previewId: again.previewId }),
+  ).toMatchObject({ duplicate: true, reportId });
+  reports.manage({ reportId, action: "delete" });
+  reports.manage({ reportId, action: "purge" });
+  expect(reports.dashboard({}).deletedReports).toEqual([]);
+  expect(() => reports.manage({ reportId, action: "restore" })).toThrow();
+});
+it("scopes report management to the current workspace and restores identical deleted imports", () => {
+  const { store, reports, path } = setup();
+  const p = reports.inspect(path);
+  const { reportId } = reports.commit({ ...metadata, previewId: p.previewId });
+  reports.manage({ reportId, action: "delete" });
+  const again = reports.inspect(path);
+  reports.commit({ ...metadata, previewId: again.previewId });
+  expect(reports.dashboard({}).selected?.id).toBe(reportId);
+  store.create({ name: "Other workspace" });
+  for (const action of ["delete", "restore", "purge"])
+    expect(() => reports.manage({ reportId, action })).toThrow("workspace");
+  expect(() =>
+    reports.manage({ reportId, action: "rename", name: "Stolen" }),
+  ).toThrow("workspace");
+});
+
+it("retains deleted report metadata and optional metrics through backup/restore", async () => {
+  const { root, store, reports, path } = setup();
+  const p = reports.inspect(path);
+  const { reportId } = reports.commit({ ...metadata, previewId: p.previewId });
+  reports.manage({ reportId, action: "rename", name: "Recoverable report" });
+  reports.manage({ reportId, action: "delete" });
+  const backups = new Backups(store);
+  const file = join(root, "deleted.creatorbackup");
+  await backups.export(file);
+  reports.manage({ reportId, action: "purge" });
+  const preview = backups.inspect(file);
+  await backups.restore(preview.previewId);
+  const state = reports.dashboard({});
+  expect(state.reports).toEqual([]);
+  expect(state.deletedReports[0].displayName).toBe("Recoverable report");
+  const recovered = reports.manage({ reportId, action: "restore" });
+  expect(recovered.rows[0]).toMatchObject({ durationSeconds: 65, ctr: 6.25 });
+});
