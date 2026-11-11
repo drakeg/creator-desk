@@ -16,6 +16,7 @@ import {
   type Client,
   type Tokens,
 } from "./oauth";
+import { Reporting } from "./reporting";
 import { History, historicalDaily } from "./history";
 import { Reports } from "../imports/reports";
 import { dailyReport, uploadReport } from "./report-data";
@@ -58,6 +59,11 @@ export class YouTube {
   private syncs = new Map<
     string,
     { controller: AbortController; message: string }
+  >();
+  private reachControllers = new Map<string, AbortController>();
+  private reachJobs = new Map<
+    string,
+    Promise<Awaited<ReturnType<Reporting["ensureReachJob"]>>>
   >();
   private attempts = new Map<string, AbortController>();
   private errors = new Map<string, string>();
@@ -175,6 +181,9 @@ export class YouTube {
     return this.state();
   }
   cancelAll() {
+    for (const controller of this.reachControllers.values()) controller.abort();
+    this.reachControllers.clear();
+    this.reachJobs.clear();
     for (const job of this.syncs.values()) job.controller.abort();
     this.syncs.clear();
     for (const controller of this.attempts.values()) controller.abort();
@@ -192,6 +201,7 @@ export class YouTube {
     const id = this.workspace();
     this.cancel();
     this.syncs.get(id)?.controller.abort();
+    this.reachControllers.get(id)?.abort();
     this.vault.delete(key(id));
     this.store.transaction(() =>
       this.store.db
@@ -474,5 +484,51 @@ export class YouTube {
     } finally {
       if (this.syncs.get(id) === job) this.syncs.delete(id);
     }
+  }
+  // Internal foundation only. A user-facing setup action follows after report ingestion/cache is ready.
+  prepareReachJob() {
+    const id = this.workspace();
+    const pending = this.reachJobs.get(id);
+    if (pending) return pending;
+    const controller = new AbortController();
+    this.reachControllers.set(id, controller);
+    let account: string | null = null;
+    const check = () => {
+      if (
+        controller.signal.aborted ||
+        this.workspace() !== id ||
+        !this.vault.has(key(id)) ||
+        (account !== null && this.vault.get(key(id)) !== account)
+      )
+        throw new CoreError(
+          "CANCELLED",
+          "The selected channel changed. Reporting setup stopped.",
+        );
+    };
+    const transport: Transport = async (url, init) => {
+      check();
+      const response = await this.transport(url, {
+        ...init,
+        signal: init.signal
+          ? AbortSignal.any([init.signal, controller.signal])
+          : controller.signal,
+      });
+      check();
+      return response;
+    };
+    const task = (async () => {
+      const token = await this.access(id, true);
+      account = this.vault.get(key(id));
+      check();
+      await this.sync(transport, check);
+      check();
+      return new Reporting(token, transport, check).ensureReachJob();
+    })().finally(() => {
+      if (this.reachJobs.get(id) === task) this.reachJobs.delete(id);
+      if (this.reachControllers.get(id) === controller)
+        this.reachControllers.delete(id);
+    });
+    this.reachJobs.set(id, task);
+    return task;
   }
 }
