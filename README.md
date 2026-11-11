@@ -102,3 +102,7 @@ Retention, competitor discovery, keyword data, project planning, AI writing, thu
 ## Downloads
 
 Installers and portable builds are published on the [Releases page](https://github.com/drakeg/creator-desk/releases). Native release jobs cover Apple Silicon and Intel Macs, Windows x64, and Debian/Ubuntu Linux x64. All four jobs must pass installed-application tests before publication. See [release notes](docs/release-notes.md) for signing status.
+
+## Development sprints
+
+Follow the [analytics sprint dashboard](https://github.com/drakeg/creator-desk/issues/31) for current work and the [implementation plan](tasks/plan.md) for acceptance rules and API constraints. Sprint 1 covers impressions/CTR, Sprint 2 retention, and Sprint 3 audience breakdowns. Unreleased work remains labelled as planned or in progress; PRs and releases are linked from their issues.
