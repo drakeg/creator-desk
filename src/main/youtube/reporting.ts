@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { downloadableReachReport } from "./reach-download";
 import { CoreError } from "../../shared/contracts";
 import { GoogleError, googleJSON, type Transport } from "./http";
 // Only ingest schemas explicitly supported by this build; newer revisions require parser review.
@@ -33,7 +34,7 @@ export class Reporting {
     private guard: () => void = () => {},
   ) {}
   private async request(
-    path: "reportTypes" | "jobs",
+    path: "reportTypes" | "jobs" | `jobs/${string}/reports`,
     init: RequestInit = {},
     query?: URLSearchParams,
   ) {
@@ -65,8 +66,8 @@ export class Reporting {
     }
   }
   private async pages<T>(
-    path: "reportTypes" | "jobs",
-    field: "reportTypes" | "jobs",
+    path: "reportTypes" | "jobs" | `jobs/${string}/reports`,
+    field: "reportTypes" | "jobs" | "reports",
     schema: z.ZodType<T>,
   ): Promise<T[]> {
     const values: T[] = [],
@@ -82,7 +83,7 @@ export class Reporting {
             {},
             new URLSearchParams({
               pageSize: "100",
-              includeSystemManaged: "false",
+              ...(field !== "reports" ? { includeSystemManaged: "false" } : {}),
               ...(token ? { pageToken: token } : {}),
             }),
           ),
@@ -95,6 +96,11 @@ export class Reporting {
         .safeParse(root.data[field]);
       if (!items.success) invalid();
       values.push(...items.data);
+      if (values.length > 10000)
+        throw new CoreError(
+          "REMOTE_ERROR",
+          "YouTube returned too many reporting records. Existing analytics are unchanged.",
+        );
       token = root.data.nextPageToken;
       if (!token) return values;
       if (seen.has(token)) invalid();
@@ -104,6 +110,21 @@ export class Reporting {
       "REMOTE_ERROR",
       "YouTube returned too many reporting-job pages. Existing analytics are unchanged.",
     );
+  }
+  async listReachReports(jobId: string) {
+    const id = z.string().min(1).max(40).parse(jobId);
+    const reports = await this.pages(
+      `jobs/${encodeURIComponent(id)}/reports`,
+      "reports",
+      downloadableReachReport,
+    );
+    if (reports.some((report) => report.jobId !== id)) invalid();
+    const ids = new Set<string>();
+    for (const report of reports) {
+      if (ids.has(report.id)) invalid();
+      ids.add(report.id);
+    }
+    return reports;
   }
   async ensureReachJob(): Promise<{
     job: ReportingJob;
