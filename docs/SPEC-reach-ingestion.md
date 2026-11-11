@@ -1,0 +1,11 @@
+# Reach ingestion — Sprint 1 / issue 33
+
+Download only the known channel_reach_basic_a1 dataset. Validate official HTTPS media URLs before attaching Google authorization, reject redirects, enforce per-request timeouts and bounded decoded content, and never persist download URLs or tokens. Keep response parsing separate from transport and storage.
+
+The report dimensions are date, channel_id and video_id. Validate channel identity, the Pacific reporting day, unique video rows, safe integer impressions and finite provider CTR values. Preserve provider numeric CTR without unit guessing or deriving clicks from total video views; user-facing percentage formatting/weighting belongs to issue 34. Empty header-only reports are valid coverage, not a failed request. Blank video IDs represent unassigned/deleted resources, not a fabricated video. Extra metrics may be ignored; known combined-report dimensions are rejected.
+
+Store manifest metadata and bounded row chunks in the existing SQLite settings table using a reserved, validated reach namespace. This additive cache avoids a schema migration and is included in existing database backups. Each chunk remains within the settings value limit. Global reach-cache storage is capped at 4 MiB; overflow fails transactionally without deleting earlier data. Keep report ID, job ID, creation time, period, channel and downloaded time; do not retain provider download URLs. Date filters and aggregation remain the next UI slice.
+
+For a given channel/day, later createTime replaces the prior revision rather than adding impressions twice. Replaying an identical report is idempotent; older revisions are ignored; contradictory equal timestamps are rejected. Validate a complete batch before transaction publication. Reads and writes are scoped to the selected local channel area and actual YouTube channel ID. Failed download/validation/cancellation preserves prior cache. Backups validate manifests, chunks, ownership, counts and total storage.
+
+Sources: https://developers.google.com/youtube/reporting/v1/reports/channel_reports ; https://developers.google.com/youtube/reporting/v1/reports ; https://developers.google.com/youtube/reporting/v1/reports/dimensions ; https://developers.google.com/youtube/reporting/v1/reports/metrics

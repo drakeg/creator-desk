@@ -31,7 +31,7 @@ const aliases: Record<string, string> = {
 function bad(message: string): never {
   throw new CoreError("INVALID_INPUT", message);
 }
-function csv(text: string): string[][] {
+export function parseCSV(text: string): string[][] {
   const first = text.split(/\r?\n/, 1)[0];
   let delimiter = ",";
   let best = 0;
@@ -203,7 +203,7 @@ export function parseImport(text: string, fileName: string): ParsedReport {
     });
     headers = [...new Set(objects.flatMap((v) => Object.keys(v)))];
   } else {
-    const records = csv(text);
+    const records = parseCSV(text);
     if (records.length < 2)
       bad("The file needs a header and at least one data record.");
     headers = records[0].map((h) => h.trim());
