@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
+import { Reach } from "./Reach";
 import { ReportLibrary } from "./ReportLibrary";
 import { ReportChart } from "./ReportChart";
 const number = (n: number | null, digits = 0) =>
@@ -13,7 +14,7 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [tab, setTab] = useState<"channel" | "reports">("channel");
+  const [tab, setTab] = useState<"channel" | "reach" | "reports">("channel");
   const [preset, setPreset] = useState("all");
   const [startDate, setStart] = useState("");
   const [endDate, setEnd] = useState("");
@@ -57,6 +58,18 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
       if (result.ok) {
         setHistory(result.value);
         setMessage("Channel history updated and saved locally.");
+        const reach = await window.desktop.getReach({});
+        if (reach.ok && reach.value.enabled) {
+          setMessage("Channel history saved. Updating reach reports…");
+          const refreshed = await window.desktop.syncReach();
+          if (!mounted.current) return;
+          if (!refreshed.ok)
+            setError(
+              `Channel history updated. Reach refresh: ${refreshed.error.message}`,
+            );
+          else
+            setMessage("Channel and reach history updated and saved locally.");
+        }
       } else setError(result.error.message);
       const fresh = await window.desktop.getYouTube();
       if (mounted.current && fresh.ok) setConnection(fresh.value);
@@ -157,8 +170,17 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
         >
           Saved reports &amp; imports
         </button>
+        <button
+          className={`button ${tab === "reach" ? "primary" : "secondary"}`}
+          aria-pressed={tab === "reach"}
+          onClick={() => setTab("reach")}
+        >
+          Reach
+        </button>
       </div>
-      {tab === "reports" ? (
+      {tab === "reach" ? (
+        <Reach connection={connection} openSettings={openSettings} />
+      ) : tab === "reports" ? (
         <>
           <p className="field-note">
             Optional exports and older snapshots. These are separate from your
@@ -401,10 +423,11 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
                 <p>
                   This view contains daily views, watch time, subscriber
                   changes, and the available upload library. It does not yet
-                  retrieve every YouTube Studio report. Impressions, CTR,
-                  retention, revenue, audience and traffic-source breakdowns are
-                  not included in this sync. CSV imports can supplement
-                  supported fields in Saved reports &amp; imports.
+                  retrieve every YouTube Studio report. Reach reports are
+                  available in the Reach tab after setup. Retention, revenue,
+                  audience and traffic-source breakdowns are not included in
+                  this sync. CSV imports can supplement supported fields in
+                  Saved reports &amp; imports.
                 </p>
                 {snapshot && (
                   <p className="channel-totals">

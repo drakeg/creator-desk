@@ -11,6 +11,10 @@ export const googleSetupPages = {
     label: "Enable YouTube Analytics API",
     url: "https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com",
   },
+  reportingApi: {
+    label: "Enable YouTube Reporting API",
+    url: "https://console.cloud.google.com/apis/library/youtubereporting.googleapis.com",
+  },
   branding: {
     label: "Configure app branding and contact details",
     url: "https://console.cloud.google.com/auth/branding",

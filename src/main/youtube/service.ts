@@ -16,6 +16,10 @@ import {
   type Client,
   type Tokens,
 } from "./oauth";
+import { reachSetup, type ReachOverview } from "../../shared/reach";
+import { ReachCache } from "./reach-cache";
+import { ingestReachReports } from "./reach-ingest";
+import { readReachOverview, reachSetupKey } from "./reach-overview";
 import { Reporting } from "./reporting";
 import { History, historicalDaily } from "./history";
 import { Reports } from "../imports/reports";
@@ -61,6 +65,7 @@ export class YouTube {
     { controller: AbortController; message: string }
   >();
   private reachControllers = new Map<string, AbortController>();
+  private reachRefreshes = new Map<string, Promise<ReachOverview>>();
   private reachJobs = new Map<
     string,
     Promise<Awaited<ReturnType<Reporting["ensureReachJob"]>>>
@@ -101,6 +106,7 @@ export class YouTube {
       pending: !!id && this.attempts.has(id),
       error: id ? this.errors.get(id) || null : null,
       snapshot: parsed.success ? parsed.data : null,
+      reachSync: !!id && this.reachControllers.has(id),
       sync:
         id && this.syncs.has(id)
           ? { message: this.syncs.get(id)!.message }
@@ -184,6 +190,7 @@ export class YouTube {
     for (const controller of this.reachControllers.values()) controller.abort();
     this.reachControllers.clear();
     this.reachJobs.clear();
+    this.reachRefreshes.clear();
     for (const job of this.syncs.values()) job.controller.abort();
     this.syncs.clear();
     for (const controller of this.attempts.values()) controller.abort();
@@ -401,6 +408,7 @@ export class YouTube {
   }
   cancelSync() {
     this.syncs.get(this.workspace())?.controller.abort();
+    this.reachControllers.get(this.workspace())?.abort();
     return null;
   }
   async syncHistory() {
@@ -485,17 +493,32 @@ export class YouTube {
       if (this.syncs.get(id) === job) this.syncs.delete(id);
     }
   }
-  // Internal foundation only. A user-facing setup action follows after report ingestion/cache is ready.
-  prepareReachJob() {
+  private runReach<T>(
+    operation: (context: {
+      id: string;
+      channel: ChannelSnapshot;
+      token: string;
+      transport: Transport;
+      guard: () => void;
+      reporting: Reporting;
+    }) => Promise<T>,
+  ) {
     const id = this.workspace();
-    const pending = this.reachJobs.get(id);
-    if (pending) return pending;
+    if (this.reachControllers.has(id))
+      throw new CoreError(
+        "INVALID_INPUT",
+        "Reach is already refreshing for this channel.",
+      );
     const controller = new AbortController();
     this.reachControllers.set(id, controller);
     let account: string | null = null;
     const check = () => {
+      if (controller.signal.aborted)
+        throw new CoreError(
+          "CANCELLED",
+          "Reach refresh stopped. Saved reach history is unchanged.",
+        );
       if (
-        controller.signal.aborted ||
         this.workspace() !== id ||
         !this.vault.has(key(id)) ||
         (account !== null && this.vault.get(key(id)) !== account)
@@ -516,19 +539,98 @@ export class YouTube {
       check();
       return response;
     };
-    const task = (async () => {
+    return (async () => {
       const token = await this.access(id, true);
       account = this.vault.get(key(id));
       check();
       await this.sync(transport, check);
       check();
-      return new Reporting(token, transport, check).ensureReachJob();
+      return operation({
+        id,
+        channel: this.state().snapshot!,
+        token,
+        transport,
+        guard: check,
+        reporting: new Reporting(token, transport, check),
+      });
     })().finally(() => {
-      if (this.reachJobs.get(id) === task) this.reachJobs.delete(id);
       if (this.reachControllers.get(id) === controller)
         this.reachControllers.delete(id);
     });
+  }
+  prepareReachJob() {
+    const id = this.workspace(),
+      pending = this.reachJobs.get(id);
+    if (pending) return pending;
+    const task = this.runReach((context) =>
+      context.reporting.ensureReachJob(),
+    ).finally(() => {
+      if (this.reachJobs.get(id) === task) this.reachJobs.delete(id);
+    });
     this.reachJobs.set(id, task);
+    return task;
+  }
+  reach(input: unknown = {}) {
+    const id = this.workspace();
+    const channelId =
+      this.state().snapshot?.id ??
+      new History(this.store).load(id)?.channelId ??
+      null;
+    return readReachOverview(
+      this.store,
+      channelId,
+      input,
+      this.reachControllers.has(id),
+    );
+  }
+  cancelReach() {
+    this.reachControllers.get(this.workspace())?.abort();
+    return null;
+  }
+  syncReach() {
+    const id = this.workspace(),
+      pending = this.reachRefreshes.get(id);
+    if (pending) return pending;
+    const task = this.runReach(async (context) => {
+      const result = await context.reporting.ensureReachJob();
+      context.guard();
+      const previous = reachSetup
+        .nullable()
+        .parse(this.store.setting(reachSetupKey(id), null));
+      const setup = reachSetup.parse({
+        workspaceId: id,
+        channelId: context.channel.id,
+        jobId: result.job.id,
+        jobCreatedAt: result.job.createTime,
+        checkedAt:
+          previous?.channelId === context.channel.id
+            ? previous.checkedAt
+            : null,
+      });
+      const put = () =>
+        this.store.db
+          .prepare(
+            "INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+          )
+          .run(reachSetupKey(id), JSON.stringify(setup));
+      this.store.transaction(put);
+      await ingestReachReports(
+        context.token,
+        result.job.id,
+        id,
+        context.channel.id,
+        context.transport,
+        new ReachCache(this.store, context.channel.id),
+        context.guard,
+      );
+      context.guard();
+      setup.checkedAt = new Date().toISOString();
+      this.store.transaction(put);
+      return { ...this.reach({}), busy: false };
+    }).finally(() => {
+      if (this.reachRefreshes.get(id) === task) this.reachRefreshes.delete(id);
+    });
+    this.reachRefreshes.set(id, task);
     return task;
   }
 }

@@ -69,6 +69,11 @@ export interface DesktopCore {
   connectYouTube(): Promise<Result<YouTubeState>>;
   cancelYouTube(): Promise<Result<YouTubeState>>;
   disconnectYouTube(): Promise<Result<YouTubeState>>;
+  getReach(
+    input: import("./reach").ReachQuery,
+  ): Promise<Result<import("./reach").ReachOverview>>;
+  syncReach(): Promise<Result<import("./reach").ReachOverview>>;
+  cancelReach(): Promise<Result<null>>;
   getChannelHistory(): Promise<
     Result<import("./youtube").ChannelHistory | null>
   >;

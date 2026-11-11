@@ -1,4 +1,4 @@
-# Creator Desk 0.11.0 (development)
+# Creator Desk 0.12.0 (development)
 
 An installable desktop app for synchronizing YouTube channel history, importing supplemental analytics, and creating Shorts. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research tools remain planned.
 
@@ -20,7 +20,7 @@ Use **Add channel** for each YouTube channel you manage. Each channel area has i
 
 After connecting, choose **Open channel overview**. The first visit automatically syncs daily views, watch time and subscriber changes from channel creation (or 2005 if creation is unavailable) through the last completed UTC day, plus every available upload. Later refreshes use **Sync channel history**. Progress and Stop sync are available. The overview defaults to all history; date presets/custom dates filter daily analytics locally. Video views are cumulative at sync and independent of those filters. CSV is not required for those core metrics.
 
-History requests use windows of at most 366 days; empty windows are accepted, and missing days are never filled with zero. Upload pagination has no 100-video truncation. Capacity remains 20,000 uploads, 200 saved reports and 16 MB of report payloads; oversized syncs fail explicitly and preserve previous history. Refresh replaces managed cache records atomically instead of accumulating snapshots. Cached history is included in database backups. Impressions, CTR, retention, revenue, audience and traffic-source breakdowns are not yet fetched by this sync.
+History requests use windows of at most 366 days; empty windows are accepted, and missing days are never filled with zero. Upload pagination has no 100-video truncation. Capacity remains 20,000 uploads, 200 saved reports and 16 MB of report payloads; oversized syncs fail explicitly and preserve previous history. Refresh replaces managed cache records atomically instead of accumulating snapshots. Cached history is included in database backups. Set up **Dashboard → Reach → Enable reach reporting** once to retrieve impressions and CTR through YouTube Reporting API. After setup, Sync channel history also refreshes available Reach reports. Retention, revenue, audience and traffic-source breakdowns remain planned.
 
 ## Working features
 
@@ -106,3 +106,11 @@ Installers and portable builds are published on the [Releases page](https://gith
 ## Development sprints
 
 Follow the [analytics sprint dashboard](https://github.com/drakeg/creator-desk/issues/31) for current work and the [implementation plan](tasks/plan.md) for acceptance rules and API constraints. Sprint 1 covers impressions/CTR, Sprint 2 retention, and Sprint 3 audience breakdowns. Unreleased work remains labelled as planned or in progress; PRs and releases are linked from their issues.
+
+## Reach reporting
+
+Enable YouTube Reporting API in the same Google project, then choose **Enable reach reporting** in Dashboard → Reach. Existing read-only Analytics authorization is used; no publishing permission is requested. The app reuses an active basic reach job or creates one on this explicit action. A job is not the same as available data: first reports can take a day or two, and new jobs normally backfill the preceding 30 days rather than a channel's lifetime.
+
+Reach shows exact downloaded coverage days, date/video filters, daily/video tables and impression-weighted CTR using Google's documented percentage values, without magnitude-based unit guessing. Zero impressions produce unavailable CTR; missing positive-impression CTR makes the aggregate unavailable. Header-only reports establish coverage without invented zero rows. Rounded source percentages may differ from Studio.
+
+Downloaded history persists locally and in database backups after provider links expire. Revisions replace the corresponding day, failed/cancelled refreshes preserve data, and source imports remain separate to avoid overlapping totals. Cache/staging capacity is 4 MiB; individual report downloads are bounded to 8 MiB. Clear errors preserve prior data when capacity or provider limits are reached.

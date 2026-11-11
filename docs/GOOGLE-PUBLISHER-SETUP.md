@@ -32,3 +32,7 @@ These remain usable with local features and imports. Settings explicitly says no
 - [Google OAuth policies and embedded user-agents](https://developers.google.com/identity/protocols/oauth2/policies)
 - [Consent configuration](https://developers.google.com/workspace/guides/configure-oauth-consent)
 - [Manage OAuth clients](https://support.google.com/cloud/answer/15549257?hl=en)
+
+## Reach reporting
+
+Enable **YouTube Reporting API** (`youtubereporting.googleapis.com`) in the publisher project for impressions/CTR. Existing read-only Analytics authorization is sufficient for report jobs; Creator Desk does not request video publishing permissions. End users choose Enable reach reporting to schedule generation, then refresh as reports become available. This is separate from enabling the Data and Analytics APIs for core history.

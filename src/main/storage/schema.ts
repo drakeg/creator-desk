@@ -1,3 +1,4 @@
+import { reachSetup } from "../../shared/reach";
 import { validateReachCache } from "../youtube/reach-cache";
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
@@ -85,6 +86,17 @@ export function checkDatabase(db: DatabaseSync) {
           "Channel history has no channel area.",
         );
       historyPointer.parse(value);
+    }
+    if (s.key.startsWith("reach-setup:")) {
+      const setup = reachSetup.parse(value);
+      if (
+        s.key !== `reach-setup:${setup.workspaceId}` ||
+        !workspaces.some((w) => w.id === setup.workspaceId)
+      )
+        throw new CoreError(
+          "INVALID_BACKUP",
+          "Reach setup has no matching channel.",
+        );
     }
     if (s.key === "appearance") appearance.parse(value);
     if (s.key === "sidebarCollapsed") z.boolean().parse(value);
