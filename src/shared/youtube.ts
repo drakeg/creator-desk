@@ -19,6 +19,7 @@ export interface YouTubeState {
   pending: boolean;
   error: string | null;
   snapshot: ChannelSnapshot | null;
+  reachSync?: boolean;
   sync?: { message: string } | null;
 }
 

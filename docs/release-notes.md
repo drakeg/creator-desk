@@ -1,12 +1,11 @@
-Creator Desk 0.11 makes the connected channel the starting point.
+Creator Desk 0.12 adds a working Reach view for impressions and thumbnail CTR.
 
-- Workspaces are now labelled Channels. Existing names, Google authorizations, saved reports and Shorts drafts are retained; each channel has separate account access.
-- Open channel overview after connecting to backfill daily history automatically. Later refreshes use one Sync channel history button with progress and Stop sync.
-- Retrieves daily views, watch time and subscriber changes from channel creation through yesterday in date batches, and follows the full uploads list. Removes the 100-upload truncation. Missing days remain unavailable and recent data may be delayed.
-- Dashboard defaults to all available daily history with date presets/custom dates, a chart, summary metrics and searchable cumulative video views. Optional exports and older snapshots are under Saved reports & imports.
-- Failed or cancelled refreshes preserve previous history; managed cache records are replaced atomically and included in database backups.
-- Research, Competitors and Projects are visibly Planned in navigation, without misleading setup checklists.
+- Open Dashboard → Reach. Enable YouTube Reporting API in the same Google project, then choose Enable reach reporting. A direct setup link opens in your system browser.
+- Setup reuses an active basic reach job or schedules daily reports with existing read-only access. First reports can take a day or two; new jobs normally provide the preceding 30 days, not all-time reach history. Waiting is shown explicitly.
+- View downloaded coverage, filter dates/videos, inspect daily/video tables and see impression-weighted CTR. Provider percentage units are retained; missing values and zero denominators stay unavailable.
+- Refresh, cancellation, offline cached results, safe revision replacement and database backup/restore are supported. Download URLs and Google tokens never reach the view or database backups.
+- After Reach setup, Sync channel history also refreshes available reach reports. CSV snapshots remain separate to prevent overlapping totals.
 
-This is the core history workflow, not every YouTube Studio report. Impressions, CTR, retention, revenue, audience and traffic-source breakdowns are not yet fetched by history sync. CSV imports can supplement supported fields. Video cumulative views are independent of daily date filters. Capacity: 20,000 uploads, 200 stored reports and 16 MB of report payloads; oversized syncs fail without truncation.
+Reach cache/staging is limited to 4 MiB; report downloads to 8 MiB. Limit errors preserve previous data. CTR source rounding can cause small differences from Studio. Retention and audience integrations remain planned in Sprints 2 and 3. No live Google account was used in automated verification.
 
 Downloads cover Apple Silicon/Intel macOS, Windows x64, and Debian/Ubuntu Linux x64. macOS builds are ad hoc signed and not notarized; Windows builds are unsigned. Checksums are included.

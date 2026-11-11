@@ -22,6 +22,7 @@ import {
 import { closeSync, readSync } from "node:fs";
 import { openRegularFile } from "./storage/files";
 import { CredentialVault } from "./credentials";
+import { reachQuery } from "../shared/reach";
 import { dailySyncInput } from "../shared/youtube";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
@@ -104,6 +105,9 @@ function configureIPC() {
     return null;
   });
   handle("useAppGoogleClient", z.undefined(), () => youtube.useAppClient());
+  handle("getReach", reachQuery, (input) => youtube.reach(input));
+  handle("syncReach", z.undefined(), () => youtube.syncReach());
+  handle("cancelReach", z.undefined(), () => youtube.cancelReach());
   handle("getChannelHistory", z.undefined(), () => youtube.history());
   handle("syncChannelHistory", z.undefined(), () => youtube.syncHistory());
   handle("cancelChannelSync", z.undefined(), () => youtube.cancelSync());

@@ -1,0 +1,11 @@
+# Reach view — Sprint 1 / issues 32–34
+
+Expose fixed, validated get/refresh/cancel IPC operations. Each setup/refresh uses the selected channel's protected account and a shared guarded Reporting context. Concurrent refreshes share one operation. Channel/account changes, disconnect, stop, app shutdown and backup restore abort work before publication. Setup is explicit; scheduling a job never implies reports exist. Preserve the channel-owned setup receipt in database backups, without credentials or URLs.
+
+Dashboard's Reach tab shows enable/refresh, a fixed system-browser Reporting API link, pending/error/offline states, last successful check and exact coverage days. Dates and video filters operate on local nonoverlapping basic reach reports. Totals are impression sums and impression-weighted CTR in the provider's documented percentage units. Never infer units from numeric magnitude or calculate clicks from total video views. Empty reports establish coverage without fabricated zeros; no impressions or missing positive-weight CTR makes aggregate CTR unavailable. Preserve unassigned/deleted video rows. Imported snapshots remain separate sources.
+
+After explicit Reach setup, Sync channel history also refreshes available reach reports. A failed reach refresh is shown separately while preserving successfully refreshed core history. Direct Reach refresh/cancel remains available. Newly created jobs normally backfill roughly 30 prior days and may take a day or two to provide reports; do not promise lifetime reach history or immediate results.
+
+Verification: aggregation/denominator/coverage/isolation tests; actual service setup→pending→download→read→offline and setup backup round trip; desktop bridge and UI enable→wait→refresh→date/video filters→core refresh→error recovery→restart; compact/light/dark visual checks and all native installer jobs. All automated data/accounts are synthetic; live consent/report availability remains dependent on the user's configured Google project. Sprint stories remain open until merge/publication and verified installer assets.
+
+Sources: https://developers.google.com/youtube/reporting/v1/reports/metrics ; https://developers.google.com/youtube/reporting/v1/reports ; https://developers.google.com/youtube/reporting/v1/reference/rest/v1/jobs/create

@@ -67,9 +67,11 @@ export function GoogleSetup({
           {link("project")}
         </li>
         <li>
-          <strong>Enable both APIs in that project.</strong>
+          <strong>Enable the YouTube APIs in that project.</strong>
           {link("dataApi")}
           {link("analyticsApi")}
+          {link("reportingApi")}
+          <p>Reporting API is needed for impressions and CTR in Reach.</p>
         </li>
         <li>
           <strong>Configure Google Auth Platform.</strong>

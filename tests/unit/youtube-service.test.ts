@@ -503,8 +503,102 @@ it("stops reach setup on restore/shutdown cancellation, disconnect, channel swit
     };
     vault.set(`youtube-${id}`, JSON.stringify({ client, tokens: account }));
     await expect(youtube.prepareReachJob()).rejects.toThrow(
-      "Reporting setup stopped",
+      /Reporting setup stopped|Reach refresh stopped/,
     );
     expect(requests).toBe(1);
   }
+});
+
+it("sets up reach, waits honestly, downloads reports and reopens cached results offline", async () => {
+  const { SCOPES } = await import("../../src/main/youtube/oauth");
+  const { REACH_REPORT_TYPE } =
+    await import("../../src/main/youtube/reporting");
+  let available = false,
+    offline = false;
+  const { store, vault, youtube } = setup(async (raw, init) => {
+    if (offline) throw new Error("offline");
+    const url = new URL(raw);
+    if (url.pathname.endsWith("/channels"))
+      return Response.json({ items: [channel] });
+    if (url.pathname.endsWith("/reportTypes"))
+      return Response.json({
+        reportTypes: [{ id: REACH_REPORT_TYPE, name: "Reach" }],
+      });
+    const job = {
+      id: "reach-job",
+      reportTypeId: REACH_REPORT_TYPE,
+      name: "Reach",
+      createTime: "2026-11-01T00:00:00Z",
+    };
+    if (url.pathname.endsWith("/jobs"))
+      return Response.json(init.method === "POST" ? job : { jobs: [job] });
+    if (url.pathname.endsWith("/reports"))
+      return Response.json({
+        reports: available
+          ? [
+              {
+                id: "report",
+                jobId: job.id,
+                startTime: "2026-11-01T07:00:00Z",
+                endTime: "2026-11-02T08:00:00Z",
+                createTime: "2026-11-03T00:00:00Z",
+                downloadUrl:
+                  "https://youtubereporting.googleapis.com/v1/media/reach",
+              },
+            ]
+          : [],
+      });
+    return new Response(
+      `date,channel_id,video_id,video_thumbnail_impressions,video_thumbnail_impressions_ctr\n20261101,${channel.id},abcdefghijk,100,10\n20261101,${channel.id},lmnopqrstuv,900,2`,
+    );
+  });
+  const id = store.state().selectedWorkspaceId!;
+  vault.set(
+    `youtube-${id}`,
+    JSON.stringify({
+      client,
+      tokens: {
+        access_token: "fixture",
+        refresh_token: "fixture",
+        expiresAt: Date.now() + 3600000,
+        scopes: SCOPES,
+      },
+    }),
+  );
+  expect(youtube.reach({}).enabled).toBe(false);
+  expect(await youtube.syncReach()).toMatchObject({
+    enabled: true,
+    busy: false,
+    coveredDays: [],
+    impressions: null,
+  });
+  available = true;
+  expect(await youtube.syncReach()).toMatchObject({
+    enabled: true,
+    busy: false,
+    coveredDays: ["2026-11-01"],
+    impressions: 1000,
+    ctr: 2.8,
+  });
+  const { checkDatabase } = await import("../../src/main/storage/schema");
+  checkDatabase(store.db);
+  const { Backups } = await import("../../src/main/storage/backups");
+  const backups = new Backups(store),
+    backupPath = join(store.root, "reach-enabled.creatorbackup");
+  await backups.export(backupPath);
+  const preview = backups.inspect(backupPath);
+  await backups.restore(preview.previewId);
+  expect(youtube.reach({})).toMatchObject({
+    enabled: true,
+    impressions: 1000,
+    ctr: 2.8,
+  });
+  offline = true;
+  await expect(youtube.syncReach()).rejects.toThrow();
+  expect(youtube.reach({})).toMatchObject({ impressions: 1000, ctr: 2.8 });
+  store.close();
+  store.open();
+  expect(youtube.reach({ videoId: "abcdefghijk" }).ctr).toBe(10);
+  youtube.disconnect();
+  expect(youtube.reach({}).impressions).toBe(1000);
 });

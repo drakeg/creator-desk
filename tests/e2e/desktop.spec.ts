@@ -641,6 +641,136 @@ test("synchronizes daily analytics and uploads through the protected main-proces
     page.getByText("No videos returned or matching this search."),
   ).toBeVisible();
   await page.getByLabel("Search channel videos").fill("");
+  await app.evaluate(() => {
+    const previous = globalThis.fetch;
+    globalThis.fetch = async (raw, init) => {
+      const url = new URL(String(raw));
+      if (url.hostname !== "youtubereporting.googleapis.com")
+        return previous(raw, init);
+      const job = {
+        id: "reach-job",
+        reportTypeId: "channel_reach_basic_a1",
+        name: "Reach",
+        createTime: "2026-11-01T00:00:00Z",
+      };
+      if (url.pathname.endsWith("/reportTypes"))
+        return Response.json({
+          reportTypes: [{ id: job.reportTypeId, name: "Reach Basic" }],
+        });
+      if (url.pathname.endsWith("/jobs"))
+        return Response.json(init?.method === "POST" ? job : { jobs: [job] });
+      if (url.pathname.endsWith("/reports")) return Response.json({});
+      throw new Error("Unexpected reporting request");
+    };
+  });
+  await page.getByRole("button", { name: "Reach", exact: true }).click();
+  const reach = page.getByRole("region", { name: "Reach analytics" });
+  await reach
+    .getByRole("button", { name: "Enable reach reporting", exact: true })
+    .click();
+  await expect(reach.getByText(/Waiting for YouTube reports/)).toBeVisible();
+  await app.evaluate(() => {
+    const previous = globalThis.fetch;
+    globalThis.fetch = async (raw, init) => {
+      const url = new URL(String(raw));
+      if (
+        url.hostname !== "youtubereporting.googleapis.com" ||
+        (!url.pathname.endsWith("/reports") &&
+          !url.pathname.startsWith("/v1/media/"))
+      )
+        return previous(raw, init);
+      const first = {
+        id: "reach-one",
+        jobId: "reach-job",
+        startTime: "2026-11-01T07:00:00Z",
+        endTime: "2026-11-02T08:00:00Z",
+        createTime: "2026-11-04T00:00:00Z",
+        downloadUrl: "https://youtubereporting.googleapis.com/v1/media/one",
+      };
+      if (url.pathname.endsWith("/reports"))
+        return Response.json({
+          reports: [
+            first,
+            {
+              ...first,
+              id: "reach-three",
+              startTime: "2026-11-03T08:00:00Z",
+              endTime: "2026-11-04T08:00:00Z",
+              downloadUrl:
+                "https://youtubereporting.googleapis.com/v1/media/three",
+            },
+          ],
+        });
+      const header =
+        "date,channel_id,video_id,video_thumbnail_impressions,video_thumbnail_impressions_ctr";
+      return new Response(
+        url.pathname.endsWith("/three")
+          ? header
+          : header +
+              "\n20261101,UC1234567890123456789012,abcdefghijk,100,10\n20261101,UC1234567890123456789012,lmnopqrstuv,900,2",
+      );
+    };
+  });
+  await reach
+    .getByRole("button", { name: "Refresh reach", exact: true })
+    .click();
+  await expect(reach.locator(".metric").first()).toContainText("1,000");
+  await expect(reach.locator(".metric").nth(1)).toContainText("2.8%");
+  await reach.getByLabel("Video", { exact: true }).selectOption("abcdefghijk");
+  await expect(reach.locator(".metric").first()).toContainText("100");
+  await expect(reach.locator(".metric").nth(1)).toContainText("10%");
+  await reach
+    .getByRole("button", { name: "Reset reach filters", exact: true })
+    .click();
+  await reach.getByLabel("From", { exact: true }).fill("2026-11-02");
+  await reach.getByLabel("To", { exact: true }).fill("2026-11-02");
+  await expect(
+    reach.getByText(/No downloaded reports cover this date range/),
+  ).toBeVisible();
+  await reach
+    .getByRole("button", { name: "Reset reach filters", exact: true })
+    .click();
+  await page.screenshot({ path: "test-results/reach-light.png" });
+  await page
+    .getByRole("button", { name: "Connected channel", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Sync channel history", exact: true })
+    .click();
+  await expect(
+    page.getByText("Channel and reach history updated and saved locally.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Reach", exact: true }).click();
+  await app.evaluate(() => {
+    const previous = globalThis.fetch;
+    globalThis.fetch = async (raw, init) =>
+      String(raw).includes("youtubereporting.googleapis.com")
+        ? Response.json({ error: {} }, { status: 403 })
+        : previous(raw, init);
+  });
+  await reach
+    .getByRole("button", { name: "Refresh reach", exact: true })
+    .click();
+  await expect(reach.getByRole("alert")).toContainText(
+    "Enable YouTube Reporting API",
+  );
+  await expect(reach.locator(".metric").first()).toContainText("1,000");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Dark", exact: true }).click();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("button", { name: "Reach", exact: true }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "Reach analytics" })
+      .locator(".metric")
+      .nth(1),
+  ).toContainText("2.8%");
+  await app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0]!.setBounds({ width: 960, height: 640 }),
+  );
+  await page.screenshot({ path: "test-results/reach-dark-compact.png" });
   await app.close();
   await launch();
   await expect(
@@ -649,6 +779,13 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await expect(
     page.getByRole("button", { name: "Sync channel history", exact: true }),
   ).toBeEnabled();
+  await page.getByRole("button", { name: "Reach", exact: true }).click();
+  await expect(
+    page
+      .getByRole("region", { name: "Reach analytics" })
+      .locator(".metric")
+      .first(),
+  ).toContainText("1,000");
 });
 
 test("creates an AI-suggested vertical Short with real local media processing", async () => {
