@@ -417,3 +417,94 @@ it("publishes all-history sync atomically and preserves it on failure, cancellat
   store.select({ id });
   expect(youtube.history()).toEqual(original);
 });
+
+it("prepares reach with protected channel authorization and shares concurrent setup", async () => {
+  const { SCOPES } = await import("../../src/main/youtube/oauth");
+  const { REACH_REPORT_TYPE } =
+    await import("../../src/main/youtube/reporting");
+  let creates = 0;
+  const { store, vault, youtube } = setup(async (raw, init) => {
+    expect(init.headers).toMatchObject({
+      Authorization: "Bearer protected-access",
+    });
+    const url = new URL(raw);
+    if (url.pathname.endsWith("/channels"))
+      return Response.json({ items: [channel] });
+    if (url.pathname.endsWith("/reportTypes"))
+      return Response.json({
+        reportTypes: [{ id: REACH_REPORT_TYPE, name: "Basic reach" }],
+      });
+    if (init.method === "POST") {
+      creates++;
+      return Response.json({
+        id: "job",
+        reportTypeId: REACH_REPORT_TYPE,
+        name: "Reach",
+        createTime: "2026-01-01T00:00:00Z",
+      });
+    }
+    return Response.json({});
+  });
+  vault.set(
+    `youtube-${store.state().selectedWorkspaceId}`,
+    JSON.stringify({
+      client,
+      tokens: {
+        access_token: "protected-access",
+        refresh_token: "fixture",
+        expiresAt: Date.now() + 3600000,
+        scopes: SCOPES,
+      },
+    }),
+  );
+  const first = youtube.prepareReachJob(),
+    second = youtube.prepareReachJob();
+  expect(first).toBe(second);
+  const result = await first;
+  expect(result.state).toBe("job-ready");
+  expect(creates).toBe(1);
+  expect(JSON.stringify(result)).not.toContain("protected-access");
+  store.create({ name: "Other channel" });
+  await expect(youtube.prepareReachJob()).rejects.toThrow(
+    "Connect to YouTube first",
+  );
+});
+
+it("stops reach setup on restore/shutdown cancellation, disconnect, channel switch or replaced account", async () => {
+  const { SCOPES } = await import("../../src/main/youtube/oauth");
+  const { REACH_REPORT_TYPE } =
+    await import("../../src/main/youtube/reporting");
+  for (const action of ["cancel", "disconnect", "switch", "replace"] as const) {
+    let requests = 0;
+    const { store, vault, youtube } = setup(async (raw) => {
+      if (raw.includes("/channels")) return Response.json({ items: [channel] });
+      requests++;
+      if (action === "cancel") youtube.cancelAll();
+      if (action === "disconnect") youtube.disconnect();
+      if (action === "switch") store.create({ name: "Other channel" });
+      if (action === "replace")
+        vault.set(
+          `youtube-${id}`,
+          JSON.stringify({
+            client,
+            tokens: { ...account, access_token: "different-account" },
+          }),
+        );
+      return Response.json({
+        reportTypes: [{ id: REACH_REPORT_TYPE, name: "Reach" }],
+      });
+    });
+    const id = store.state().selectedWorkspaceId!;
+    const account = {
+      access_token: "protected-access",
+      refresh_token: "fixture",
+      expiresAt: Date.now() + 3600000,
+      scopes: SCOPES,
+    };
+    vault.set(`youtube-${id}`, JSON.stringify({ client, tokens: account }));
+    await expect(youtube.prepareReachJob()).rejects.toThrow(
+      "Reporting setup stopped",
+    );
+    expect(requests).toBe(1);
+  }
+});
