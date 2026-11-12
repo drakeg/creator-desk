@@ -566,13 +566,21 @@ export class YouTube {
     });
   }
 
-  /** Return only the selected workspace's exact stored video/date curve. */
+  /** Read saved curves without network access, including after disconnect.
+   * Workspace-scoped cache keys still prevent cross-workspace reads. A connected
+   * channel snapshot must agree with the requested identity.
+   */
   retention(input: RetentionQuery) {
     const query = retentionQuery.parse(input);
-    this.workspace();
+    const workspaceId = this.workspace();
     const channel = this.state().snapshot;
-    if (!channel || query.channelId !== channel.id) {
+    if (channel && query.channelId !== channel.id) {
       throw new CoreError("INVALID_INPUT", "Choose a video from the selected YouTube channel.");
+    }
+    // If a connection is active but has not yet established its channel,
+    // require a fresh snapshot before exposing a previous channel's history.
+    if (this.vault.has(key(workspaceId)) && !channel) {
+      throw new CoreError("INVALID_INPUT", "Sync the connected YouTube channel before opening retention history.");
     }
     return new RetentionCache(this.store).read(query);
   }
