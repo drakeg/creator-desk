@@ -535,6 +535,19 @@ test("synchronizes daily analytics and uploads through the protected main-proces
     globalThis.fetch = async (raw) => {
       const url = new URL(String(raw));
       const channel = "UC1234567890123456789012";
+      if (url.hostname === "youtubeanalytics.googleapis.com" &&
+          url.searchParams.get("dimensions") === "elapsedVideoTimeRatio") {
+        if (url.searchParams.get("filters") !== "video==abcdefghijk")
+          throw new Error("Retention request must target exactly the selected video");
+        return Response.json({
+          columnHeaders: [
+            { name: "elapsedVideoTimeRatio" },
+            { name: "audienceWatchRatio" },
+            { name: "relativeRetentionPerformance" },
+          ],
+          rows: [[0, 1.4, 0.9], [0.5, 0.75, 0.6], [1, 0.2, 0.4]],
+        });
+      }
       if (url.hostname === "youtubeanalytics.googleapis.com")
         return Response.json({
           columnHeaders: [
@@ -641,6 +654,23 @@ test("synchronizes daily analytics and uploads through the protected main-proces
     page.getByText("No videos returned or matching this search."),
   ).toBeVisible();
   await page.getByLabel("Search channel videos").fill("");
+  await page.getByRole("button", { name: "View retention for Fixture upload" }).click();
+  const retention = page.getByRole("region", { name: "Audience retention analytics" });
+  await expect(retention.getByRole("heading", { name: "Audience retention" })).toBeVisible();
+  await expect(retention.getByLabel("Video")).toHaveValue("abcdefghijk");
+  await retention.getByRole("button", { name: "Refresh retention" }).click();
+  await expect(retention.getByRole("img", { name: /Audience watch ratio curve/ })).toBeVisible();
+  await expect(retention.getByRole("cell", { name: "140.0%" })).toBeVisible();
+  await expect(retention.getByText(/Cached locally for offline use/)).toBeVisible();
+  await page.screenshot({ path: "test-results/retention-compact.png" });
+  // Returning to the same tab must reopen the cached curve without a new request.
+  await retention.getByRole("button", { name: "Back to channel analytics" }).click();
+  await page.getByRole("button", { name: "Retention", exact: true }).click();
+  await expect(page.getByRole("cell", { name: "140.0%" })).toBeVisible();
+  // Native controls are reachable by keyboard even at compact window width.
+  await page.getByLabel("Video", { exact: true }).focus();
+  await expect(page.getByLabel("Video", { exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Connected channel", exact: true }).click();
   await app.evaluate(() => {
     const previous = globalThis.fetch;
     globalThis.fetch = async (raw, init) => {
