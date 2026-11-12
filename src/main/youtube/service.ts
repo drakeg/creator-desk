@@ -18,6 +18,9 @@ import {
 } from "./oauth";
 import { reachSetup, type ReachOverview } from "../../shared/reach";
 import { ReachCache } from "./reach-cache";
+import { RetentionCache } from "./retention-cache";
+import { fetchVideoRetention } from "./retention";
+import { retentionQuery, type RetentionQuery } from "../../shared/retention";
 import { ingestReachReports } from "./reach-ingest";
 import { readReachOverview, reachSetupKey } from "./reach-overview";
 import { Reporting } from "./reporting";
@@ -65,6 +68,7 @@ export class YouTube {
     { controller: AbortController; message: string }
   >();
   private reachControllers = new Map<string, AbortController>();
+  private retentionControllers = new Map<string, AbortController>();
   private reachRefreshes = new Map<string, Promise<ReachOverview>>();
   private reachJobs = new Map<
     string,
@@ -187,6 +191,8 @@ export class YouTube {
     return this.state();
   }
   cancelAll() {
+    for (const controller of this.retentionControllers.values()) controller.abort();
+    this.retentionControllers.clear();
     for (const controller of this.reachControllers.values()) controller.abort();
     this.reachControllers.clear();
     this.reachJobs.clear();
@@ -209,6 +215,7 @@ export class YouTube {
     this.cancel();
     this.syncs.get(id)?.controller.abort();
     this.reachControllers.get(id)?.abort();
+    this.retentionControllers.get(id)?.abort();
     this.vault.delete(key(id));
     this.store.transaction(() =>
       this.store.db
@@ -558,6 +565,75 @@ export class YouTube {
         this.reachControllers.delete(id);
     });
   }
+
+  /** Return only the selected workspace's exact stored video/date curve. */
+  retention(input: RetentionQuery) {
+    const query = retentionQuery.parse(input);
+    const id = this.workspace();
+    const channel = this.state().snapshot;
+    if (!channel || query.channelId !== channel.id) {
+      throw new CoreError("INVALID_INPUT", "Choose a video from the selected YouTube channel.");
+    }
+    return new RetentionCache(this.store).read(query);
+  }
+
+  cancelRetention() {
+    this.retentionControllers.get(this.workspace())?.abort();
+    return null;
+  }
+
+  async syncRetention(input: RetentionQuery) {
+    const query = retentionQuery.parse(input);
+    const id = this.workspace();
+    if (this.retentionControllers.has(id)) {
+      throw new CoreError("INVALID_INPUT", "A retention refresh is already running for this channel.");
+    }
+    const channel = this.state().snapshot;
+    if (!channel || channel.id !== query.channelId) {
+      throw new CoreError("INVALID_INPUT", "Choose a video from the selected YouTube channel.");
+    }
+    const controller = new AbortController();
+    this.retentionControllers.set(id, controller);
+    try {
+      const token = await this.access(id, true);
+      // Refreshing an expired token may update the vault. Capture the active
+      // account identity after access, without confusing a refresh for a switch.
+      const refreshedAccount = this.vault.get(key(id));
+      if (!refreshedAccount || this.workspace() !== id || controller.signal.aborted ||
+          this.state().snapshot?.id !== channel.id) {
+        throw new CoreError("CANCELLED", "Retention refresh stopped. Previous history is unchanged.");
+      }
+      const checked = () => {
+        if (controller.signal.aborted || this.workspace() !== id ||
+            this.vault.get(key(id)) !== refreshedAccount ||
+            this.state().snapshot?.id !== channel.id) {
+          throw new CoreError("CANCELLED", "Retention refresh stopped. Previous history is unchanged.");
+        }
+      };
+      // All subsequent transport requests are guarded against account switches.
+      const guardedTransport: Transport = async (url, init) => {
+        checked();
+        const response = await this.transport(url, {
+          ...init,
+          signal: init.signal
+            ? AbortSignal.any([init.signal, controller.signal])
+            : controller.signal,
+        });
+        checked();
+        return response;
+      };
+      const points = await fetchVideoRetention(
+        token, query, guardedTransport, controller.signal,
+      );
+      checked();
+      return new RetentionCache(this.store).save(query, points, checked);
+    } finally {
+      if (this.retentionControllers.get(id) === controller) {
+        this.retentionControllers.delete(id);
+      }
+    }
+  }
+
   prepareReachJob() {
     const id = this.workspace(),
       pending = this.reachJobs.get(id);
