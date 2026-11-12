@@ -11,6 +11,18 @@ const integer = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const numeric = z.number().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const apiCount = z.string().regex(/^\d+$/).transform(Number).pipe(integer);
 const videoId = z.string().regex(/^[A-Za-z0-9_-]{11}$/);
+/** YouTube Data API contentDetails.duration uses an ISO 8601 day/time span.
+ * Unsupported or zero-length durations remain unavailable instead of being
+ * guessed (for example, an ongoing live stream).
+ */
+export function youtubeDurationSeconds(value: string | undefined): number | null {
+  if (!value) return null;
+  const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(value);
+  if (!match || !match.slice(1).some((part) => part !== undefined)) return null;
+  const [days, hours, minutes, seconds] = match.slice(1).map((part) => Number(part ?? 0));
+  const total = days * 86400 + hours * 3600 + minutes * 60 + seconds;
+  return Number.isSafeInteger(total) && total > 0 ? total : null;
+}
 function invalid(): never {
   throw new CoreError(
     "REMOTE_ERROR",
@@ -203,7 +215,7 @@ export async function uploadReport(
     const url = new URL("https://www.googleapis.com/youtube/v3/videos");
     const batch = unique.slice(offset, offset + 50);
     url.search = new URLSearchParams({
-      part: "snippet,statistics",
+      part: "snippet,statistics,contentDetails",
       id: batch.join(","),
     }).toString();
     const result = z
@@ -218,6 +230,7 @@ export async function uploadReport(
                 publishedAt: z.iso.datetime({ offset: true }),
               }),
               statistics: z.object({ viewCount: apiCount.optional() }),
+              contentDetails: z.object({ duration: z.string().max(100) }).optional(),
             }),
           )
           .max(50),
@@ -237,6 +250,7 @@ export async function uploadReport(
         watchHours: null,
         subscribers: null,
         impressions: null,
+        durationSeconds: youtubeDurationSeconds(item.contentDetails?.duration),
       });
     }
   }
@@ -248,7 +262,9 @@ export async function uploadReport(
   return parsedReport.parse({
     kind: "videos",
     rows,
-    metrics: ["views"],
+    metrics: rows.some((row) => row.durationSeconds != null)
+      ? ["views", "durationSeconds"]
+      : ["views"],
     warnings: [
       "YouTube Data API upload snapshot: cumulative views for returned videos, not views in a chosen reporting period. Watch time, subscriber change, and impressions are unavailable.",
 

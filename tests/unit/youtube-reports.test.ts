@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { dailyReport, uploadReport } from "../../src/main/youtube/report-data";
+import { dailyReport, uploadReport, youtubeDurationSeconds } from "../../src/main/youtube/report-data";
 import { dailySyncInput } from "../../src/shared/youtube";
 const channel = "UC1234567890123456789012";
 const headers = [
@@ -81,6 +81,7 @@ it("follows upload pagination and omits unavailable video counts without inventi
           ...(pages === 1 ? { nextPageToken: "next" } : {}),
         });
       expect(url.searchParams.get("id")).toBe("abcdefghijk,lmnopqrstuv");
+      expect(url.searchParams.get("part")).toBe("snippet,statistics,contentDetails");
       return Response.json({
         items: [
           {
@@ -91,6 +92,7 @@ it("follows upload pagination and omits unavailable video counts without inventi
               publishedAt: "2026-01-01T12:00:00Z",
             },
             statistics: { viewCount: "123" },
+            contentDetails: { duration: "PT2M5S" },
           },
           {
             id: "lmnopqrstuv",
@@ -112,7 +114,9 @@ it("follows upload pagination and omits unavailable video counts without inventi
     watchHours: null,
     date: null,
     published: "2026-01-01",
+    durationSeconds: 125,
   });
+  expect(report.metrics).toContain("durationSeconds");
   expect(report.warnings.join(" ")).toContain("omitted");
 });
 it("does not accept videos belonging to another channel", async () => {
@@ -177,4 +181,16 @@ it("reads beyond two upload pages without truncating the library", async () => {
   expect(pages).toBe(3);
   expect(report.rows).toHaveLength(3);
   expect(report.warnings.join(" ")).not.toContain("100 uploads");
+});
+
+it("parses known ISO 8601 YouTube durations without guessing unknown live lengths", () => {
+  expect(youtubeDurationSeconds("PT1H2M3S")).toBe(3723);
+  expect(youtubeDurationSeconds("P1DT2H")).toBe(93600);
+  expect(youtubeDurationSeconds("PT45S")).toBe(45);
+  expect(youtubeDurationSeconds("PT0S")).toBeNull();
+  expect(youtubeDurationSeconds("P")).toBeNull();
+  expect(youtubeDurationSeconds("PT")).toBeNull();
+  expect(youtubeDurationSeconds("live")).toBeNull();
+  expect(youtubeDurationSeconds(undefined)).toBeNull();
+  expect(youtubeDurationSeconds("P999999999999999D")).toBeNull();
 });

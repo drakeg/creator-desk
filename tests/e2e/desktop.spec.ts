@@ -611,6 +611,7 @@ test("synchronizes daily analytics and uploads through the protected main-proces
                 publishedAt: "2026-01-02T12:00:00Z",
               },
               statistics: { viewCount: "99" },
+              contentDetails: { duration: "PT2M5S" },
             },
           ],
         });
@@ -661,6 +662,8 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await retention.getByRole("button", { name: "Refresh retention" }).click();
   await expect(retention.getByRole("img", { name: /Audience watch ratio curve/ })).toBeVisible();
   await expect(retention.getByRole("cell", { name: "140.0%" })).toBeVisible();
+  await expect(retention.getByRole("columnheader", { name: "Elapsed time" })).toBeVisible();
+  await expect(retention.getByRole("cell", { name: "2:05" })).toBeVisible();
   await expect(retention.getByText(/Cached locally for offline use/)).toBeVisible();
   await page.screenshot({ path: "test-results/retention-compact.png" });
   // Returning to the same tab must reopen the cached curve without a new request.
