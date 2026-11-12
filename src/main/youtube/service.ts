@@ -622,9 +622,17 @@ export class YouTube {
         checked();
         return response;
       };
-      const points = await fetchVideoRetention(
-        token, query, guardedTransport, controller.signal,
-      );
+      let points;
+      try {
+        points = await fetchVideoRetention(
+          token, query, guardedTransport, controller.signal,
+        );
+      } catch (error) {
+        // The shared HTTP helper may normalize an aborted request into a
+        // transport error. Prefer the actual cancellation/account guard.
+        checked();
+        throw error;
+      }
       checked();
       return new RetentionCache(this.store).save(query, points, checked);
     } finally {
