@@ -670,6 +670,33 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   // Native controls are reachable by keyboard even at compact window width.
   await page.getByLabel("Video", { exact: true }).focus();
   await expect(page.getByLabel("Video", { exact: true })).toBeFocused();
+  // Retention must remain usable at the supported minimum window size,
+  // with any horizontal scrolling contained in the chart/table instead of
+  // overflowing the entire application.
+  await app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0]!.setBounds({ width: 960, height: 640 }),
+  );
+  expect(await page.evaluate(() =>
+    document.documentElement.scrollWidth <= innerWidth
+  )).toBe(true);
+  await expect(retention.getByRole("img", { name: /Audience watch ratio curve/ })).toBeVisible();
+  await page.screenshot({ path: "test-results/retention-light-compact.png" });
+
+  await page.getByLabel("Settings", { exact: true }).click();
+  await page.getByRole("button", { name: "Dark", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Dark", exact: true }))
+    .toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("button", { name: "Retention", exact: true }).click();
+  await expect(page.getByRole("cell", { name: "140.0%" })).toBeVisible();
+  expect(await page.evaluate(() =>
+    document.documentElement.scrollWidth <= innerWidth
+  )).toBe(true);
+  await page.screenshot({ path: "test-results/retention-dark-compact.png" });
+
+  await page.getByLabel("Settings", { exact: true }).click();
+  await page.getByRole("button", { name: "Light", exact: true }).click();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await page.getByRole("button", { name: "Connected channel", exact: true }).click();
   await app.evaluate(() => {
     const previous = globalThis.fetch;
