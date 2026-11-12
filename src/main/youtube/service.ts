@@ -569,7 +569,7 @@ export class YouTube {
   /** Return only the selected workspace's exact stored video/date curve. */
   retention(input: RetentionQuery) {
     const query = retentionQuery.parse(input);
-    const id = this.workspace();
+    this.workspace();
     const channel = this.state().snapshot;
     if (!channel || query.channelId !== channel.id) {
       throw new CoreError("INVALID_INPUT", "Choose a video from the selected YouTube channel.");
