@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 import { Reach } from "./Reach";
+import { Retention } from "./Retention";
 import { ReportLibrary } from "./ReportLibrary";
 import { ReportChart } from "./ReportChart";
 const number = (n: number | null, digits = 0) =>
@@ -14,12 +15,13 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [tab, setTab] = useState<"channel" | "reach" | "reports">("channel");
+  const [tab, setTab] = useState<"channel" | "reach" | "reports" | "retention">("channel");
   const [preset, setPreset] = useState("all");
   const [startDate, setStart] = useState("");
   const [endDate, setEnd] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [retentionVideo, setRetentionVideo] = useState("");
   const attempted = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
@@ -171,6 +173,13 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
           Saved reports &amp; imports
         </button>
         <button
+          className={`button ${tab === "retention" ? "primary" : "secondary"}`}
+          aria-pressed={tab === "retention"}
+          onClick={() => setTab("retention")}
+        >
+          Retention
+        </button>
+        <button
           className={`button ${tab === "reach" ? "primary" : "secondary"}`}
           aria-pressed={tab === "reach"}
           onClick={() => setTab("reach")}
@@ -178,7 +187,16 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
           Reach
         </button>
       </div>
-      {tab === "reach" ? (
+      {tab === "retention" ? (
+        <Retention
+          key={history?.channelId ?? connection?.snapshot?.id ?? "unconnected"}
+          history={history}
+          connection={connection}
+          initialVideoId={retentionVideo}
+          back={() => setTab("channel")}
+          openSettings={openSettings}
+        />
+      ) : tab === "reach" ? (
         <Reach connection={connection} openSettings={openSettings} />
       ) : tab === "reports" ? (
         <>
@@ -377,6 +395,7 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
                         <th scope="col">Video</th>
                         <th scope="col">Cumulative views</th>
                         <th scope="col">Published</th>
+                      <th scope="col">Retention</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -388,6 +407,10 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
                           </td>
                           <td>{number(video.views)}</td>
                           <td>{video.published ?? "Unavailable"}</td>
+                          <td><button className="text-button" onClick={() => {
+                            setRetentionVideo(video.id);
+                            setTab("retention");
+                          }} aria-label={`View retention for ${video.title}`}>View retention</button></td>
                         </tr>
                       ))}
                     </tbody>
@@ -424,8 +447,9 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
                   This view contains daily views, watch time, subscriber
                   changes, and the available upload library. It does not yet
                   retrieve every YouTube Studio report. Reach reports are
-                  available in the Reach tab after setup. Retention, revenue,
-                  audience and traffic-source breakdowns are not included in
+                  available in the Reach tab after setup. Video retention is
+                  available in the Retention tab after a separate per-video refresh.
+                  Revenue, audience and traffic-source breakdowns are not included in
                   this sync. CSV imports can supplement supported fields in
                   Saved reports &amp; imports.
                 </p>

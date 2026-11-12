@@ -1808,3 +1808,44 @@ dialog {
 .reach-tables .analytics-table th {
   padding: 12px 14px;
 }
+
+/* Video retention: accessible filters and responsive, theme-aware chart. */
+.retention-content {
+  min-width: 0;
+  padding-bottom: 28px;
+}
+.retention-content > h2 { margin-top: 18px; }
+.retention-content > .field-note { margin: 14px 0; line-height: 1.6; }
+.retention-content .daily-filters {
+  align-items: center;
+  padding: 16px 0;
+}
+.retention-content .daily-filters select {
+  min-width: 180px;
+  max-width: min(100%, 380px);
+  flex: 1 1 200px;
+}
+.retention-content .daily-filters input {
+  max-width: 165px;
+}
+.retention-content .report-chart {
+  overflow-x: auto;
+  padding: 16px 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.retention-content .report-chart svg {
+  min-width: 500px;
+  height: auto;
+  max-height: 320px;
+}
+.retention-content .report-chart text {
+  color: var(--muted);
+}
+.retention-content .analytics-table td:first-child { min-width: 0; }
+@media (max-width: 800px) {
+  .retention-content .daily-filters { align-items: stretch; }
+  .retention-content .daily-filters select { flex-basis: 100%; }
+  .retention-content .daily-filters input { max-width: 100%; }
+}
