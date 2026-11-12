@@ -3,6 +3,7 @@ import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 import type { RetentionCacheRecord } from "../main/youtube/retention-cache";
 import type { RetentionQuery } from "../shared/retention";
 import { retentionTime } from "../shared/retention-time";
+import { retentionPreset } from "../shared/retention-range";
 
 interface Props {
   history: ChannelHistory | null;
@@ -90,6 +91,26 @@ export function Retention({ history, connection, initialVideoId, back, openSetti
         Inspect the share of viewing activity at each point in one video.
         Replays may show more than 100% watch ratio; a decline alone does not establish why viewers left.
       </p>
+      {history && (
+        <div className="retention-presets" role="group" aria-label="Retention date shortcuts">
+          {([28, 90, "all"] as const).map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              className="button secondary"
+              disabled={refreshing}
+              onClick={() => {
+                const range = retentionPreset(history.startDate, history.endDate, preset);
+                if (!range) return;
+                setStartDate(range.startDate);
+                setEndDate(range.endDate);
+              }}
+            >
+              {preset === "all" ? "All available history" : `Last ${preset} days`}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="daily-filters">
         <label htmlFor="retention-video">Video</label>
         <select id="retention-video" value={videoId} disabled={refreshing} onChange={(e) => setVideoId(e.target.value)}>
