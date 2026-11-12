@@ -73,6 +73,9 @@ export interface DesktopCore {
     input: import("./reach").ReachQuery,
   ): Promise<Result<import("./reach").ReachOverview>>;
   syncReach(): Promise<Result<import("./reach").ReachOverview>>;
+  getRetention(input: import("./retention").RetentionQuery): Promise<Result<import("../main/youtube/retention-cache").RetentionCacheRecord | null>>;
+  syncRetention(input: import("./retention").RetentionQuery): Promise<Result<import("../main/youtube/retention-cache").RetentionCacheRecord>>;
+  cancelRetention(): Promise<Result<null>>;
   cancelReach(): Promise<Result<null>>;
   getChannelHistory(): Promise<
     Result<import("./youtube").ChannelHistory | null>

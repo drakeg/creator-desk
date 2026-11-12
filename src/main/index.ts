@@ -23,6 +23,7 @@ import { closeSync, readSync } from "node:fs";
 import { openRegularFile } from "./storage/files";
 import { CredentialVault } from "./credentials";
 import { reachQuery } from "../shared/reach";
+import { retentionQuery } from "../shared/retention";
 import { dailySyncInput } from "../shared/youtube";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
@@ -98,6 +99,28 @@ function handle(
     return next;
   });
 }
+/** Cancellation bypasses the operation queue so it can interrupt an active fetch. */
+function handleImmediate(
+  name: string,
+  schema: z.ZodType,
+  operation: (input: unknown) => unknown,
+) {
+  ipcMain.handle(`core:${name}`, async (event, input: unknown): Promise<Result<unknown>> => {
+    if (
+      !window ||
+      event.sender !== window.webContents ||
+      event.senderFrame !== window.webContents.mainFrame ||
+      event.senderFrame.url !== rendererURL
+    )
+      return errorResult(new CoreError("INVALID_INPUT", "This operation is unavailable."));
+    try {
+      if (closing) throw new CoreError("CANCELLED", "The app is closing.");
+      return { ok: true, value: await operation(schema.parse(input)) };
+    } catch (error) {
+      return errorResult(error);
+    }
+  });
+}
 function configureIPC() {
   registerShorts(handle, shorts, () => window!);
   handle("openGoogleSetup", openGoogleSetupInput, async (input) => {
@@ -106,6 +129,9 @@ function configureIPC() {
   });
   handle("useAppGoogleClient", z.undefined(), () => youtube.useAppClient());
   handle("getReach", reachQuery, (input) => youtube.reach(input));
+  handle("getRetention", retentionQuery, (input) => youtube.retention(retentionQuery.parse(input)));
+  handle("syncRetention", retentionQuery, (input) => youtube.syncRetention(retentionQuery.parse(input)));
+  handleImmediate("cancelRetention", z.undefined(), () => youtube.cancelRetention());
   handle("syncReach", z.undefined(), () => youtube.syncReach());
   handle("cancelReach", z.undefined(), () => youtube.cancelReach());
   handle("getChannelHistory", z.undefined(), () => youtube.history());
