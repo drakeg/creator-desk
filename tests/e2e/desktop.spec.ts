@@ -659,6 +659,17 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   const retention = page.getByRole("region", { name: "Audience retention analytics" });
   await expect(retention.getByRole("heading", { name: "Audience retention" })).toBeVisible();
   await expect(retention.getByLabel("Video")).toHaveValue("abcdefghijk");
+  await retention.getByRole("button", { name: "Last 28 days" }).click();
+  const end = await retention.getByLabel("To").inputValue();
+  const recent = new Date(Date.parse(end + "T00:00:00Z") - 27 * 86400000)
+    .toISOString().slice(0, 10);
+  await expect(retention.getByLabel("From")).toHaveValue(recent);
+  await retention.getByRole("button", { name: "Last 90 days" }).click();
+  const longer = new Date(Date.parse(end + "T00:00:00Z") - 89 * 86400000)
+    .toISOString().slice(0, 10);
+  await expect(retention.getByLabel("From")).toHaveValue(longer);
+  await retention.getByRole("button", { name: "All available history" }).click();
+  await expect(retention.getByLabel("From")).toHaveValue("2026-01-01");
   await retention.getByRole("button", { name: "Refresh retention" }).click();
   await expect(retention.getByRole("img", { name: /Audience watch ratio curve/ })).toBeVisible();
   await expect(retention.getByRole("cell", { name: "140.0%" })).toBeVisible();
