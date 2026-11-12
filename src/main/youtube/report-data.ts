@@ -17,7 +17,7 @@ const videoId = z.string().regex(/^[A-Za-z0-9_-]{11}$/);
  */
 export function youtubeDurationSeconds(value: string | undefined): number | null {
   if (!value) return null;
-  const match = /^P(?:(\\d+)D)?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)?$/.exec(value);
+  const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(value);
   if (!match || !match.slice(1).some((part) => part !== undefined)) return null;
   const [days, hours, minutes, seconds] = match.slice(1).map((part) => Number(part ?? 0));
   const total = days * 86400 + hours * 3600 + minutes * 60 + seconds;
