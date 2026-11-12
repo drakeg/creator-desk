@@ -1,5 +1,6 @@
 import { reachSetup } from "../../shared/reach";
 import { validateReachCache } from "../youtube/reach-cache";
+import { validateRetentionCache } from "../youtube/retention-cache";
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import { channelSnapshot, historyPointer } from "../../shared/youtube";
@@ -111,6 +112,7 @@ export function checkDatabase(db: DatabaseSync) {
       );
   }
   validateReachCache(db, workspaces);
+  validateRetentionCache(db, workspaces);
   if (version === 2) {
     const records = db
       .prepare(
