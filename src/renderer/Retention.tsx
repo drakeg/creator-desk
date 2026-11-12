@@ -32,11 +32,15 @@ export function Retention({ history, connection, initialVideoId, back, openSetti
     setRecord(null);
     setError("");
     setLoading(true);
-    if (!query) {
+    // Build the lookup from stable primitive dependencies inside the effect.
+    const cachedQuery: RetentionQuery | null = valid
+      ? { channelId, videoId, startDate, endDate }
+      : null;
+    if (!cachedQuery) {
       setLoading(false);
       return () => { active = false; };
     }
-    void window.desktop.getRetention(query).then((result) => {
+    void window.desktop.getRetention(cachedQuery).then((result) => {
       if (!active) return;
       if (result.ok) setRecord(result.value);
       else setError(result.error.message);
@@ -46,7 +50,7 @@ export function Retention({ history, connection, initialVideoId, back, openSetti
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [channelId, videoId, startDate, endDate]); // The IPC query uses these primitive keys.
+  }, [valid, channelId, videoId, startDate, endDate]);
 
   async function refresh() {
     if (!query) return;
