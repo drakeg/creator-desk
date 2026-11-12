@@ -55,8 +55,7 @@ export function Retention({ history, connection, initialVideoId, back, openSetti
     try {
       const result = await window.desktop.syncRetention(query);
       if (result.ok) {
-        // The user may have changed filters during the request; only show
-        // results still matching the selected scope.
+        // Inputs are locked during refresh; channel switches unmount this view.
         if (result.value.query.channelId === channelId &&
             result.value.query.videoId === videoId &&
             result.value.query.startDate === startDate &&
@@ -85,14 +84,14 @@ export function Retention({ history, connection, initialVideoId, back, openSetti
       </p>
       <div className="daily-filters">
         <label htmlFor="retention-video">Video</label>
-        <select id="retention-video" value={videoId} onChange={(e) => setVideoId(e.target.value)}>
+        <select id="retention-video" value={videoId} disabled={refreshing} onChange={(e) => setVideoId(e.target.value)}>
           {!videos.length && <option value="">No synced videos</option>}
           {videos.map((video) => <option key={video.id} value={video.id}>{video.title}</option>)}
         </select>
         <label htmlFor="retention-start">From</label>
-        <input id="retention-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        <input id="retention-start" type="date" value={startDate} disabled={refreshing} onChange={(e) => setStartDate(e.target.value)} />
         <label htmlFor="retention-end">To</label>
-        <input id="retention-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        <input id="retention-end" type="date" value={endDate} disabled={refreshing} onChange={(e) => setEndDate(e.target.value)} />
         <button className="button primary" disabled={!valid || !connection?.connected || refreshing}
           onClick={() => void refresh()}>
           {refreshing ? "Refreshing…" : "Refresh retention"}
