@@ -118,3 +118,42 @@ it("does not publish a response after workspace selection changes", async () => 
   store.select({ id: store.state().workspaces[0].id });
   expect(youtube.retention(query)).toBeNull();
 });
+
+it("reads previously saved retention offline after disconnect without using Google", async () => {
+  let calls = 0;
+  const { store, youtube } = setup(async (url, init) => {
+    calls++;
+    return goodTransport()(url, init);
+  });
+  const saved = await youtube.syncRetention(query);
+  const beforeOffline = calls;
+  youtube.disconnect();
+  expect(youtube.state().connected).toBe(false);
+  expect(youtube.state().snapshot).toBeNull();
+  expect(youtube.retention(query)).toEqual(saved);
+  expect(calls).toBe(beforeOffline);
+  await expect(youtube.syncRetention(query)).rejects.toThrow();
+  const second = store.create({ name: "Other workspace" });
+  expect(youtube.retention(query)).toBeNull();
+  store.select({ id: store.state().workspaces.find((w) => w.id !== second.id)!.id });
+  expect(youtube.retention(query)).toEqual(saved);
+});
+
+it("does not expose old cached retention through an unverified replacement connection", async () => {
+  const { store, vault, youtube } = setup(goodTransport());
+  await youtube.syncRetention(query);
+  const workspaceId = store.state().selectedWorkspaceId!;
+  youtube.disconnect();
+  // An in-progress replacement account without a matching snapshot cannot
+  // inherit the previous channel's cached results.
+  vault.set(`youtube-${workspaceId}`, JSON.stringify({
+    client: { client_id: "test.apps.googleusercontent.com", client_secret: "fixture" },
+    tokens: {
+      access_token: "unverified",
+      refresh_token: "new-token",
+      expiresAt: Date.now() + 3600000,
+      scopes: SCOPES,
+    },
+  }));
+  expect(() => youtube.retention(query)).toThrow(/Sync the connected/);
+});
