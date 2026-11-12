@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 import type { RetentionCacheRecord } from "../main/youtube/retention-cache";
 import type { RetentionQuery } from "../shared/retention";
+import { retentionTime } from "../shared/retention-time";
 
 interface Props {
   history: ChannelHistory | null;
@@ -22,6 +23,9 @@ export function Retention({ history, connection, initialVideoId, back, openSetti
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const selected = videos.find((v) => v.id === videoId);
+  const duration = selected?.durationSeconds;
+  const halfway = retentionTime(duration, 0.5);
+  const fullTime = retentionTime(duration, 1);
   const valid = !!channelId && !!videoId && !!startDate && !!endDate &&
     startDate <= endDate && endDate <= new Date().toISOString().slice(0, 10);
   const query: RetentionQuery | null = valid
@@ -124,16 +128,17 @@ export function Retention({ history, connection, initialVideoId, back, openSetti
             <text x="7" y={y(1) + 5} fill="currentColor" fontSize="12">100%</text>
             <text x="20" y="234" fill="currentColor" fontSize="12">0%</text>
             <text x="50" y="255" fill="currentColor" fontSize="12">Start</text>
-            <text x="450" y="255" textAnchor="middle" fill="currentColor" fontSize="12">50%</text>
-            <text x="850" y="255" textAnchor="end" fill="currentColor" fontSize="12">End</text>
+            <text x="450" y="255" textAnchor="middle" fill="currentColor" fontSize="12">{halfway ?? "50%"}</text>
+            <text x="850" y="255" textAnchor="end" fill="currentColor" fontSize="12">{fullTime ?? "End"}</text>
           </svg>
         </div>
-        <p className="field-note">Horizontal position: percentage of video elapsed. Vertical axis: audience watch ratio. No timestamps are shown because video duration is not available in this library.</p>
+        <p className="field-note">Horizontal position: {fullTime ? "elapsed video time" : "percentage of video elapsed (duration unavailable)"}. Vertical axis: audience watch ratio. Replays can exceed 100%.</p>
         <div className="table-scroll">
           <table className="analytics-table">
-            <thead><tr><th scope="col">Video progress</th><th scope="col">Watch ratio</th><th scope="col">Relative retention</th></tr></thead>
+            <thead><tr><th scope="col">Video progress</th>{fullTime && <th scope="col">Elapsed time</th>}<th scope="col">Watch ratio</th><th scope="col">Relative retention</th></tr></thead>
             <tbody>{points.map((point) => <tr key={point.elapsedVideoTimeRatio}>
               <td>{(point.elapsedVideoTimeRatio * 100).toFixed(1)}%</td>
+              {fullTime && <td>{retentionTime(duration, point.elapsedVideoTimeRatio)}</td>}
               <td>{(point.audienceWatchRatio * 100).toFixed(1)}%</td>
               <td>{(point.relativeRetentionPerformance * 100).toFixed(1)}%</td>
             </tr>)}</tbody>
