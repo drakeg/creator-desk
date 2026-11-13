@@ -5,6 +5,7 @@ import type { RetentionQuery } from "../shared/retention";
 import { retentionTime } from "../shared/retention-time";
 import { retentionPreset } from "../shared/retention-range";
 import { retentionTopLabel } from "../shared/retention-chart";
+import { retentionFreshness } from "../shared/retention-freshness";
 
 interface Props {
   history: ChannelHistory | null;
@@ -77,6 +78,7 @@ export function Retention({ history, connection, initialVideoId, back, openSetti
       setRefreshing(false);
     }
   }
+  const freshness = record ? retentionFreshness(record.fetchedAt) : null;
   const points = record?.points ?? [];
   const maxY = Math.max(1, ...points.map((p) => p.audienceWatchRatio));
   const topLabel = retentionTopLabel(maxY);
@@ -139,6 +141,12 @@ export function Retention({ history, connection, initialVideoId, back, openSetti
       {loading && <p role="status">Opening saved retention…</p>}
       {!loading && !record && valid && <p role="status">No retention curve has been saved for this video and period. Refresh to request one.</p>}
       {record && <p className="field-note">Saved {new Date(record.fetchedAt).toLocaleString()} · {record.query.startDate} through {record.query.endDate}. Cached locally for offline use.</p>}
+      {freshness?.stale && (
+        <p className="field-note" role="status">
+          This retention snapshot is {freshness.ageDays} days old. It remains available offline,
+          but may not include later viewing activity. Refresh while connected for newer data.
+        </p>
+      )}
       {record && !points.length && <p role="status">YouTube returned no retention rows for this period. This is unavailable data, not zero retention.</p>}
       {points.length > 0 && <>
         <div className="report-chart" role="img" aria-label={`Audience watch ratio curve for ${selected?.title ?? videoId}, from ${startDate} to ${endDate}`}>
