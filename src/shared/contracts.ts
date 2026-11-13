@@ -73,6 +73,9 @@ export interface DesktopCore {
     input: import("./reach").ReachQuery,
   ): Promise<Result<import("./reach").ReachOverview>>;
   syncReach(): Promise<Result<import("./reach").ReachOverview>>;
+  listYouTubeChanges(): Promise<Result<import("./youtube-changes").ChangeRecord[]>>;
+  saveYouTubeChange(input: z.infer<typeof import("./youtube-changes").saveChange>): Promise<Result<import("./youtube-changes").ChangeRecord[]>>;
+  removeYouTubeChange(input: z.infer<typeof import("./youtube-changes").changeId>): Promise<Result<import("./youtube-changes").ChangeRecord[]>>;
   getRetention(input: import("./retention").RetentionQuery): Promise<Result<import("../main/youtube/retention-cache").RetentionCacheRecord | null>>;
   syncRetention(input: import("./retention").RetentionQuery): Promise<Result<import("../main/youtube/retention-cache").RetentionCacheRecord>>;
   cancelRetention(): Promise<Result<null>>;
