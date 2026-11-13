@@ -36,6 +36,7 @@ const core: DesktopCore = {
   openGoogleSetup: (input) => ipcRenderer.invoke("core:openGoogleSetup", input),
   useAppGoogleClient: () => ipcRenderer.invoke("core:useAppGoogleClient"),
   getReach: (input) => ipcRenderer.invoke("core:getReach", input),
+  openYouTubeChangeSource: (input) => ipcRenderer.invoke("core:openYouTubeChangeSource", input),
   listYouTubeChanges: () => ipcRenderer.invoke("core:listYouTubeChanges"),
   saveYouTubeChange: (input) => ipcRenderer.invoke("core:saveYouTubeChange", input),
   removeYouTubeChange: (input) => ipcRenderer.invoke("core:removeYouTubeChange", input),
