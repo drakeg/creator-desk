@@ -673,6 +673,8 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await retention.getByRole("button", { name: "Refresh retention" }).click();
   await expect(retention.getByRole("img", { name: /Audience watch ratio curve/ })).toBeVisible();
   await expect(retention.getByRole("cell", { name: "140.0%" })).toBeVisible();
+  await expect(retention.locator(".report-chart svg text", { hasText: "140%" })).toHaveCount(1);
+  await expect(retention.getByText(/Relative retention compares performance/)).toBeVisible();
   await expect(retention.getByRole("columnheader", { name: "Elapsed time" })).toBeVisible();
   await expect(retention.getByRole("cell", { name: "2:05" })).toBeVisible();
   await expect(retention.getByText(/Cached locally for offline use/)).toBeVisible();
