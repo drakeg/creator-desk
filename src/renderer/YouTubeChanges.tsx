@@ -65,7 +65,13 @@ export function YouTubeChanges({ channelName }: { channelName: string }) {
     finally { setBusy(false); }
   }
   function edit(item: ChangeRecord) {
-    const { id: _id, workspaceId: _workspaceId, createdAt: _createdAt, updatedAt: _updatedAt, ...value } = item;
+    const value: ChangeDraft = {
+      category: item.category, title: item.title, sourceUrl: item.sourceUrl,
+      publishedDate: item.publishedDate, effectiveDate: item.effectiveDate,
+      description: item.description, channelImpact: item.channelImpact,
+      requiredAction: item.requiredAction, verification: item.verification,
+      status: item.status, followUpDate: item.followUpDate, notes: item.notes,
+    };
     setEditing(item.id); setDraft(value); setShowForm(true); setError(""); setMessage("");
   }
   const visible = items.filter((item) => view === "all" || item.status === view);
@@ -143,7 +149,11 @@ export function YouTubeChanges({ channelName }: { channelName: string }) {
           <button type="button" className="button secondary" onClick={() => edit(item)}>Edit / verify</button>
           <button type="button" className="button secondary" disabled={busy}
             onClick={() => { void remove(item.id); }}>Remove</button>
-          <button type="button" className="button secondary" onClick={() => { void navigator.clipboard.writeText(item.sourceUrl); }}>Copy source URL</button>
+          <button type="button" className="button secondary" onClick={() => {
+            void window.desktop.openYouTubeChangeSource({ url: item.sourceUrl }).then((result) => {
+              if (!result.ok) setError(result.error.message);
+            }).catch(() => setError("The official source could not be opened."));
+          }}>Open official source</button>
         </div>
       </article>)}
     </div>
