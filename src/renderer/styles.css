@@ -1882,3 +1882,19 @@ dialog {
 .change-card-heading h3 { margin: 0; }
 .change-card-heading span, .source-url { color: var(--muted); font-size: 13px; }
 @media (max-width: 800px) { .change-fields { grid-template-columns: minmax(0, 1fr); } }
+
+.change-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+.change-summary p {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.change-summary strong { display: block; color: var(--ink); font-size: 22px; }
