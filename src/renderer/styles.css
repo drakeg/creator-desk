@@ -1849,3 +1849,13 @@ dialog {
   .retention-content .daily-filters select { flex-basis: 100%; }
   .retention-content .daily-filters input { max-width: 100%; }
 }
+
+.retention-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+.retention-presets .button {
+  flex: 0 1 auto;
+}
