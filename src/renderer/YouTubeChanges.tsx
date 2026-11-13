@@ -29,6 +29,8 @@ export function YouTubeChanges({ channelName }: { channelName: string }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<ChangeDraft>(empty);
   const [showForm, setShowForm] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteJson, setPasteJson] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -89,10 +91,38 @@ export function YouTubeChanges({ channelName }: { channelName: string }) {
           {entry.label} ({entry.value === "all" ? items.length : items.filter((i) => i.status === entry.value).length})
         </option>)}
       </select>
+      <button className="button secondary" type="button" onClick={() => setPasteOpen((open) => !open)}>
+        Paste ChatGPT record
+      </button>
       <button className="button primary" type="button" onClick={() => {
         setEditing(null); setDraft(empty); setShowForm(true); setError(""); setMessage("");
       }}>Add verified-source change</button>
     </div>
+    {pasteOpen && <div className="change-editor">
+      <h3>Import a ChatGPT-prepared record</h3>
+      <p className="field-note">
+        Paste one JSON object containing the change fields. The desktop app validates
+        every field and only accepts official-source links. Imported text is always
+        marked as unverified and added to the verification queue.
+      </p>
+      <label htmlFor="change-json">Change record JSON</label>
+      <textarea id="change-json" rows={7} value={pasteJson}
+        onChange={(e) => setPasteJson(e.target.value)} />
+      <div className="change-toolbar">
+        <button className="button primary" type="button" onClick={() => {
+          try {
+            const parsed: unknown = JSON.parse(pasteJson);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw Error("object");
+            const next = {
+              ...parsed, status: "verify", verification: "unverified",
+            } as ChangeDraft;
+            setDraft(next); setEditing(null); setShowForm(true); setPasteOpen(false); setError("");
+          } catch {
+            setError("Paste a single valid JSON object. No changes were saved.");
+          }
+        }}>Review imported record</button>
+      </div>
+    </div>}
     {error && <p className="alert" role="alert">{error}</p>}
     {message && <p role="status">{message}</p>}
     {showForm && <form className="change-editor" onSubmit={(e) => { e.preventDefault(); void save(); }}>
