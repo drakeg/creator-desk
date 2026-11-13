@@ -84,6 +84,13 @@ export function YouTubeChanges({ channelName }: { channelName: string }) {
       for {channelName}. Sources are manually verified; no rumors, automatic eligibility claims or guessed dates.
       Unknown publication and effective dates remain blank.
     </p>
+    <div className="change-summary" aria-label="YouTube change action report">
+      <p><strong>{items.length}</strong> tracked changes</p>
+      <p><strong>{items.filter((i) => i.verification !== "verified" && i.verification !== "not_applicable").length}</strong> to verify</p>
+      <p><strong>{items.filter((i) => i.status === "in_progress").length}</strong> in progress</p>
+      <p><strong>{items.filter((i) => i.followUpDate && i.followUpDate <= new Date().toISOString().slice(0, 10) && !["completed", "dismissed"].includes(i.status)).length}</strong> follow-ups due</p>
+      <p><strong>{items.filter((i) => i.status === "completed").length}</strong> completed</p>
+    </div>
     <div className="change-toolbar">
       <label htmlFor="youtube-change-view">View</label>
       <select id="youtube-change-view" value={view} onChange={(e) => setView(e.target.value as typeof view)}>
@@ -138,8 +145,8 @@ export function YouTubeChanges({ channelName }: { channelName: string }) {
         <label>Publication date (if known)<input type="date" value={draft.publishedDate ?? ""} onChange={(e) => update("publishedDate", e.target.value || null)} /></label>
         <label>Effective date (if known)<input type="date" value={draft.effectiveDate ?? ""} onChange={(e) => update("effectiveDate", e.target.value || null)} /></label>
         <label>Follow-up date<input type="date" value={draft.followUpDate ?? ""} onChange={(e) => update("followUpDate", e.target.value || null)} /></label>
-        <label>Verification
-          <select value={draft.verification} onChange={(e) => update("verification", e.target.value as ChangeDraft["verification"])}>
+        <label htmlFor="youtube-change-verification">Verification
+          <select id="youtube-change-verification" value={draft.verification} onChange={(e) => update("verification", e.target.value as ChangeDraft["verification"])}>
             <option value="unverified">Needs verification</option>
             <option value="tentative">Tentative / not confirmed</option>
             <option value="verified">Verified against source</option>
