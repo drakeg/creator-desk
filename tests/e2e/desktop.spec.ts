@@ -1257,7 +1257,7 @@ test("tracks official YouTube changes per channel without guessing dates", async
   await tracker.getByLabel("What changed?").fill("Fixture only; verify the official page before using.");
   await tracker.getByLabel(/Why does it matter for/).fill("Eligibility requirements may affect publishing plans.");
   await tracker.getByLabel("Required action").fill("Read official documentation and verify applicability.");
-  await tracker.getByLabel("Verification").selectOption("unverified");
+  await tracker.getByLabel("Verification", { exact: true }).selectOption("unverified");
   await tracker.getByLabel("Workflow status").selectOption("verify");
   await tracker.getByRole("button", { name: "Save change" }).click();
   await tracker.getByLabel("View").selectOption("verify");
