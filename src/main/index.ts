@@ -24,7 +24,7 @@ import { openRegularFile } from "./storage/files";
 import { CredentialVault } from "./credentials";
 import { reachQuery } from "../shared/reach";
 import { retentionQuery } from "../shared/retention";
-import { saveChange, changeId } from "../shared/youtube-changes";
+import { saveChange, changeId, officialYouTubeSource } from "../shared/youtube-changes";
 import { YouTubeChanges } from "./youtube/change-tracker";
 import { dailySyncInput } from "../shared/youtube";
 import { AI } from "./shorts/ai";
@@ -130,6 +130,12 @@ function configureIPC() {
     return null;
   });
   handle("useAppGoogleClient", z.undefined(), () => youtube.useAppClient());
+  handle("openYouTubeChangeSource", z.object({ url: z.string().max(2000) }).strict(), async (input) => {
+    const { url } = z.object({ url: z.string().max(2000) }).strict().parse(input);
+    if (!officialYouTubeSource(url)) throw new CoreError("INVALID_INPUT", "Choose an approved official HTTPS source.");
+    await shell.openExternal(url);
+    return null;
+  });
   handle("listYouTubeChanges", z.undefined(), () => new YouTubeChanges(store).list());
   handle("saveYouTubeChange", saveChange, (input) => new YouTubeChanges(store).save(saveChange.parse(input)));
   handle("removeYouTubeChange", changeId, (input) => new YouTubeChanges(store).remove(changeId.parse(input)));
