@@ -1859,3 +1859,26 @@ dialog {
 .retention-presets .button {
   flex: 0 1 auto;
 }
+
+/* Official YouTube changes and action dashboard. */
+.youtube-change-tracker { min-width: 0; padding-bottom: 28px; }
+.youtube-change-tracker > .field-note { line-height: 1.6; max-width: 80ch; }
+.change-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0; }
+.change-toolbar select { max-width: 300px; min-width: 180px; }
+.change-editor, .change-card {
+  border: 1px solid var(--line); background: var(--surface);
+  border-radius: 10px; padding: 18px; margin: 18px 0;
+}
+.change-editor label { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; font-weight: 600; font-size: 13px; }
+.change-editor input, .change-editor select, .change-editor textarea {
+  color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px; font: inherit; max-width: 100%; width: 100%;
+}
+.change-editor textarea { resize: vertical; }
+.change-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.change-card { overflow-wrap: anywhere; }
+.change-card p { line-height: 1.6; }
+.change-card-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; }
+.change-card-heading h3 { margin: 0; }
+.change-card-heading span, .source-url { color: var(--muted); font-size: 13px; }
+@media (max-width: 800px) { .change-fields { grid-template-columns: minmax(0, 1fr); } }
