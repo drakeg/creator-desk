@@ -64,6 +64,7 @@ export interface DesktopCore {
     page: import("./google-setup").GoogleSetupPage;
   }): Promise<Result<null>>;
   useAppGoogleClient(): Promise<Result<YouTubeState>>;
+  openYouTubeStudio(): Promise<Result<null>>;
   getYouTube(): Promise<Result<YouTubeState>>;
   importYouTubeClient(): Promise<Result<YouTubeState | null>>;
   connectYouTube(): Promise<Result<YouTubeState>>;
