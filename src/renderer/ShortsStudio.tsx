@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { ShortsState, Clip } from "../shared/shorts";
 import type { Result } from "../shared/contracts";
+import type { ChannelHistory, YouTubeState } from "../shared/youtube";
+import { ownedShortsUploads } from "../shared/owned-shorts";
 import { AIProvider } from "./AIProvider";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { selectClipBoundary } from "../shared/clip-selection";
@@ -8,6 +10,10 @@ export function ShortsStudio() {
   const [state, setState] = useState<ShortsState | null>(null);
   const [draft, setDraft] = useState<Clip | null>(null);
   const [working, setWorking] = useState(false);
+  const [youtube, setYouTube] = useState<YouTubeState | null>(null);
+  const [history, setHistory] = useState<ChannelHistory | null>(null);
+  const [selectedUploadId, setSelectedUploadId] = useState("");
+  const [uploadsLoaded, setUploadsLoaded] = useState(false);
   const [error, setError] = useState("");
   const [previewError, setPreviewError] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
@@ -35,6 +41,20 @@ export function ShortsStudio() {
       if (timer) clearInterval(timer);
     };
   }, [hasJob]);
+  useEffect(() => {
+    let active = true;
+    void Promise.all([window.desktop.getYouTube(), window.desktop.getChannelHistory()])
+      .then(([connection, records]) => {
+        if (!active) return;
+        if (connection.ok) setYouTube(connection.value);
+        if (records.ok) setHistory(records.value);
+        setUploadsLoaded(true);
+      })
+      .catch(() => { if (active) setUploadsLoaded(true); });
+    return () => { active = false; };
+  }, []);
+  const ownedUploads = ownedShortsUploads(youtube, history);
+  const selectedUpload = ownedUploads.find((item) => item.id === selectedUploadId);
   async function perform(operation: () => Promise<Result<ShortsState>>) {
     setWorking(true);
     setError("");
@@ -89,6 +109,71 @@ export function ShortsStudio() {
           </button>
         </div>
       )}
+      <section className="studio-uploads" aria-label="Your channel videos">
+        <h3>Start from one of your YouTube uploads</h3>
+        <p>
+          Creator Desk only lists uploads from your own connected YouTube channel.
+          This is your video library, not a public video search.
+        </p>
+        {ownedUploads.length ? (
+          <>
+            <label htmlFor="studio-owned-video">Your uploaded video</label>
+            <select
+              id="studio-owned-video"
+              value={selectedUploadId}
+              onChange={(e) => setSelectedUploadId(e.target.value)}
+              disabled={busy}
+            >
+              <option value="">Choose an upload</option>
+              {ownedUploads.map((upload) => (
+                <option key={upload.id} value={upload.id}>
+                  {upload.title} ({upload.id})
+                </option>
+              ))}
+            </select>
+            {selectedUpload && (
+              <div className="studio-upload-selection" role="status">
+                <p><strong>Selected:</strong> {selectedUpload.title}</p>
+                <p><strong>Duration:</strong> {selectedUpload.durationSeconds === null
+                  ? "Unavailable" : `${Math.round(selectedUpload.durationSeconds)} seconds`}</p>
+                <p>
+                  To edit this upload, choose your own local copy below. YouTube's
+                  read-only APIs do not supply the video file, and Creator Desk will
+                  not download, scrape, or record YouTube streams.
+                </p>
+                <div className="youtube-actions">
+                  <button type="button" className="button primary" disabled={busy || !state?.ffmpegReady}
+                    onClick={() => void perform(() => window.desktop.shorts.chooseVideo())}>
+                    Choose local copy of this upload
+                  </button>
+                  <button type="button" className="button secondary"
+                    onClick={() => {
+                      void window.desktop.openYouTubeStudio()
+                        .then((result) => { if (!result.ok) setError(result.error.message); })
+                        .catch(() => setError("Could not open YouTube Studio."));
+                    }}>
+                    Open my uploads in YouTube Studio
+                  </button>
+                </div>
+                <p className="field-note">
+                  You must confirm the chosen local file is the same video;
+                  Creator Desk cannot verify content identity from metadata alone.
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="field-note" role="status">
+            {!uploadsLoaded ? "Loading your channel uploads…" :
+              !youtube?.connected ? "Connect your own channel in Settings to select its uploads." :
+              "No synced uploads are available for this connected channel. Sync channel history in Dashboard."}
+          </p>
+        )}
+      </section>
+      <p className="field-note">
+        Or use one of your own video files using the
+        existing local-file option below.
+      </p>
       <div className="youtube-actions">
         {!state?.ffmpegManaged && (
           <button

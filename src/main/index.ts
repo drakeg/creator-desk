@@ -148,6 +148,11 @@ function configureIPC() {
   handle("getChannelHistory", z.undefined(), () => youtube.history());
   handle("syncChannelHistory", z.undefined(), () => youtube.syncHistory());
   handle("cancelChannelSync", z.undefined(), () => youtube.cancelSync());
+  // Fixed destination only; never accept a renderer-supplied external URL.
+  handle("openYouTubeStudio", z.undefined(), async () => {
+    await shell.openExternal("https://studio.youtube.com/");
+    return null;
+  });
   handle("getYouTube", z.undefined(), () => youtube.state());
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());
