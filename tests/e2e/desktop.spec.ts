@@ -1243,3 +1243,35 @@ test("Google setup displays exact URLs and opens only fixed destinations in the 
   ).toBe(2);
   await page.screenshot({ path: "test-results/google-setup.png" });
 });
+
+test("tracks official YouTube changes per channel without guessing dates", async () => {
+  await create("Mad Mallards Adventures");
+  await page.getByRole("button", { name: "YouTube changes" }).click();
+  const tracker = page.getByRole("region", { name: "YouTube change tracker" });
+  await expect(tracker.getByText(/no rumors, automatic eligibility claims or guessed dates/i)).toBeVisible();
+  await expect(tracker.getByText(/No changes in this view/)).toBeVisible();
+  await tracker.getByRole("button", { name: "Add verified-source change" }).click();
+  await tracker.getByLabel("Category").selectOption("monetization");
+  await tracker.getByLabel("Title").fill("Example eligibility guidance");
+  await tracker.getByLabel("Official source URL").fill("https://support.google.com/youtube/answer/72851");
+  await tracker.getByLabel("What changed?").fill("Fixture only; verify the official page before using.");
+  await tracker.getByLabel(/Why does it matter for/).fill("Eligibility requirements may affect publishing plans.");
+  await tracker.getByLabel("Required action").fill("Read official documentation and verify applicability.");
+  await tracker.locator("#youtube-change-verification").selectOption("unverified");
+  await tracker.getByLabel("Workflow status").selectOption("verify");
+  await tracker.getByRole("button", { name: "Save change" }).click();
+  await tracker.getByLabel("View").selectOption("verify");
+  await expect(tracker.getByRole("heading", { name: "Example eligibility guidance" })).toBeVisible();
+  await expect(tracker.getByText(/Published: Unknown/)).toBeVisible();
+  await expect(tracker.getByText(/Effective: Unknown/)).toBeVisible();
+  await app.close();
+  await launch();
+  await page.getByRole("button", { name: "YouTube changes" }).click();
+  await page.getByLabel("View").selectOption("verify");
+  await expect(page.getByRole("heading", { name: "Example eligibility guidance" })).toBeVisible();
+  await page.getByRole("button", { name: "Add channel", exact: true }).click();
+  const modal = page.getByRole("dialog");
+  await modal.getByLabel("Channel name").fill("Second channel");
+  await modal.getByRole("button", { name: "Add channel", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Example eligibility guidance" })).not.toBeVisible();
+});

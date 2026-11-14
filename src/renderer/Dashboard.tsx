@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 import { Reach } from "./Reach";
 import { Retention } from "./Retention";
+import { YouTubeChanges } from "./YouTubeChanges";
 import { ReportLibrary } from "./ReportLibrary";
 import { ReportChart } from "./ReportChart";
 const number = (n: number | null, digits = 0) =>
@@ -15,7 +16,7 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [tab, setTab] = useState<"channel" | "reach" | "reports" | "retention">("channel");
+  const [tab, setTab] = useState<"channel" | "reach" | "reports" | "retention" | "changes">("channel");
   const [preset, setPreset] = useState("all");
   const [startDate, setStart] = useState("");
   const [endDate, setEnd] = useState("");
@@ -180,6 +181,13 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
           Retention
         </button>
         <button
+          className={`button ${tab === "changes" ? "primary" : "secondary"}`}
+          aria-pressed={tab === "changes"}
+          onClick={() => setTab("changes")}
+        >
+          YouTube changes
+        </button>
+        <button
           className={`button ${tab === "reach" ? "primary" : "secondary"}`}
           aria-pressed={tab === "reach"}
           onClick={() => setTab("reach")}
@@ -187,7 +195,9 @@ export function Dashboard({ openSettings }: { openSettings: () => void }) {
           Reach
         </button>
       </div>
-      {tab === "retention" ? (
+      {tab === "changes" ? (
+        <YouTubeChanges channelName={connection?.snapshot?.title ?? "this channel"} />
+      ) : tab === "retention" ? (
         <Retention
           key={history?.channelId ?? connection?.snapshot?.id ?? "unconnected"}
           history={history}
