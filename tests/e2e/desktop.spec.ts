@@ -635,7 +635,7 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   const ownVideos = page.getByRole("region", { name: "Your channel videos" });
   await expect(ownVideos.getByRole("option", { name: /Fixture upload/ })).toHaveCount(1);
   await ownVideos.getByLabel("Your uploaded video").selectOption("abcdefghijk");
-  await expect(ownVideos.getByText("Fixture upload", { exact: true })).toBeVisible();
+  await expect(ownVideos.locator(".studio-upload-selection")).toContainText("Fixture upload");
   await expect(ownVideos.getByText(/read-only APIs do not supply the video file/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Choose source video" })).toBeVisible();
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
