@@ -1,4 +1,4 @@
-# Creator Desk 0.12.0 (development)
+# Creator Desk 0.13.0 (development)
 
 An installable desktop app for synchronizing YouTube channel history, importing supplemental analytics, and creating Shorts. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research tools remain planned.
 
