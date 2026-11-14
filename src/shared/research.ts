@@ -3,6 +3,7 @@ import { z } from "zod";
 export const researchInput = z.object({
   query: z.string().trim().min(2).max(100),
 }).strict();
+export type ResearchInput = z.infer<typeof researchInput>;
 
 export const researchVideo = z.object({
   id: z.string().regex(/^[a-zA-Z0-9_-]{11}$/),
