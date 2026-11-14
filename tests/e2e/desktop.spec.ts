@@ -126,7 +126,8 @@ test("offline onboarding, settings and workspace selection survive restart", asy
   ).toBeVisible();
   await page.getByRole("button", { name: "Research", exact: true }).click();
   await expect(
-    page.locator(".module-banner").getByText("Planned", { exact: true }),
+    page.getByRole("region", { name: "Video topic research" })
+      .getByRole("heading", { name: "Research your next video idea" }),
   ).toBeVisible();
 });
 test("backup preview, cancellation, restore and restart use real SQLite data", async () => {
@@ -596,6 +597,23 @@ test("synchronizes daily analytics and uploads through the protected main-proces
                 },
           ],
         });
+      if (url.pathname.endsWith("/search"))
+        return Response.json({
+          items: [{
+            id: { videoId: "zzzzzzzzzzz" },
+            snippet: {
+              title: "RV solar battery upgrade",
+              channelId: "UC1234567890123456789012",
+              channelTitle: "Fixture research channel",
+              publishedAt: "2026-01-04T10:00:00Z",
+            },
+          }],
+        });
+      if (url.pathname.endsWith("/videos") && url.searchParams.get("part") === "statistics")
+        return Response.json({ items: [{
+          id: "zzzzzzzzzzz",
+          statistics: { viewCount: "2500" },
+        }] });
       if (url.pathname.endsWith("/playlistItems"))
         return Response.json({
           items: [{ contentDetails: { videoId: "abcdefghijk" } }],
@@ -631,6 +649,15 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await expect(
     page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
   ).toBeVisible();
+  // vidIQ-alternative Research must provide real public metadata, not a placeholder.
+  await page.getByRole("button", { name: "Research", exact: true }).click();
+  const research = page.getByRole("region", { name: "Video topic research" });
+  await research.getByLabel("Search YouTube topics or keywords").fill("RV solar");
+  await research.getByRole("button", { name: "Research videos" }).click();
+  await expect(research.getByRole("heading", { name: "RV solar battery upgrade" })).toBeVisible();
+  await expect(research.getByText(/2,500/)).toBeVisible();
+  await expect(research.getByText(/19 research searches remaining today/)).toBeVisible();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await page.getByLabel("Analytics date range").selectOption("custom");
   await page.getByLabel("From", { exact: true }).fill("2026-01-02");
   await page.getByLabel("To", { exact: true }).fill("2026-01-03");

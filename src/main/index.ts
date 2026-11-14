@@ -27,6 +27,7 @@ import { retentionQuery } from "../shared/retention";
 import { saveChange, changeId, officialYouTubeSource } from "../shared/youtube-changes";
 import { YouTubeChanges } from "./youtube/change-tracker";
 import { dailySyncInput } from "../shared/youtube";
+import { researchInput } from "../shared/research";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
 import { registerShorts } from "./shorts/ipc";
@@ -148,6 +149,16 @@ function configureIPC() {
   handle("getChannelHistory", z.undefined(), () => youtube.history());
   handle("syncChannelHistory", z.undefined(), () => youtube.syncHistory());
   handle("cancelChannelSync", z.undefined(), () => youtube.cancelSync());
+  handle("openResearchVideo",
+    z.object({ videoId: z.string().regex(/^[a-zA-Z0-9_-]{11}$/) }).strict(),
+    async (input) => {
+      const { videoId } = z.object({
+        videoId: z.string().regex(/^[a-zA-Z0-9_-]{11}$/),
+      }).strict().parse(input);
+      await shell.openExternal(`https://www.youtube.com/watch?v=${videoId}`);
+      return null;
+    });
+  handle("researchVideos", researchInput, (input) => youtube.research(input));
   handle("getYouTube", z.undefined(), () => youtube.state());
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());
