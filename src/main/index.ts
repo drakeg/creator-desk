@@ -159,6 +159,11 @@ function configureIPC() {
       return null;
     });
   handle("researchVideos", researchInput, (input) => youtube.research(input));
+  // Fixed destination only; never accept a renderer-supplied external URL.
+  handle("openYouTubeStudio", z.undefined(), async () => {
+    await shell.openExternal("https://studio.youtube.com/");
+    return null;
+  });
   handle("getYouTube", z.undefined(), () => youtube.state());
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());

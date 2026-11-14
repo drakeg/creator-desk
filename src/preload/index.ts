@@ -50,6 +50,7 @@ const core: DesktopCore = {
   cancelChannelSync: () => ipcRenderer.invoke("core:cancelChannelSync"),
   openResearchVideo: (input) => ipcRenderer.invoke("core:openResearchVideo", input),
   researchVideos: (input) => ipcRenderer.invoke("core:researchVideos", input),
+  openYouTubeStudio: () => ipcRenderer.invoke("core:openYouTubeStudio"),
   getYouTube: () => ipcRenderer.invoke("core:getYouTube"),
   importYouTubeClient: () => ipcRenderer.invoke("core:importYouTubeClient"),
   connectYouTube: () => ipcRenderer.invoke("core:connectYouTube"),

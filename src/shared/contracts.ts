@@ -66,6 +66,7 @@ export interface DesktopCore {
   useAppGoogleClient(): Promise<Result<YouTubeState>>;
   openResearchVideo(input: { videoId: string }): Promise<Result<null>>;
   researchVideos(input: import("./research").ResearchInput): Promise<Result<import("./research").ResearchResults>>;
+  openYouTubeStudio(): Promise<Result<null>>;
   getYouTube(): Promise<Result<YouTubeState>>;
   importYouTubeClient(): Promise<Result<YouTubeState | null>>;
   connectYouTube(): Promise<Result<YouTubeState>>;
