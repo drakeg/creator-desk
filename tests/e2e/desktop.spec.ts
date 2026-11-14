@@ -126,7 +126,8 @@ test("offline onboarding, settings and workspace selection survive restart", asy
   ).toBeVisible();
   await page.getByRole("button", { name: "Research", exact: true }).click();
   await expect(
-    page.locator(".module-banner").getByText("Planned", { exact: true }),
+    page.getByRole("region", { name: "Video topic research" })
+      .getByRole("heading", { name: "Research your next video idea" }),
   ).toBeVisible();
 });
 test("backup preview, cancellation, restore and restart use real SQLite data", async () => {
