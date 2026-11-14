@@ -27,6 +27,7 @@ import { retentionQuery } from "../shared/retention";
 import { saveChange, changeId, officialYouTubeSource } from "../shared/youtube-changes";
 import { YouTubeChanges } from "./youtube/change-tracker";
 import { dailySyncInput } from "../shared/youtube";
+import { researchInput } from "../shared/research";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
 import { registerShorts } from "./shorts/ipc";
@@ -148,6 +149,7 @@ function configureIPC() {
   handle("getChannelHistory", z.undefined(), () => youtube.history());
   handle("syncChannelHistory", z.undefined(), () => youtube.syncHistory());
   handle("cancelChannelSync", z.undefined(), () => youtube.cancelSync());
+  handle("researchVideos", researchInput, (input) => youtube.research(input));
   handle("getYouTube", z.undefined(), () => youtube.state());
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());
