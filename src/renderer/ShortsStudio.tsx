@@ -171,7 +171,7 @@ export function ShortsStudio() {
         )}
       </section>
       <p className="field-note">
-        Or use any video file you own or are authorized to edit using the
+        Or use one of your own video files using the
         existing local-file option below.
       </p>
       <div className="youtube-actions">
