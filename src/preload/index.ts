@@ -48,6 +48,7 @@ const core: DesktopCore = {
   getChannelHistory: () => ipcRenderer.invoke("core:getChannelHistory"),
   syncChannelHistory: () => ipcRenderer.invoke("core:syncChannelHistory"),
   cancelChannelSync: () => ipcRenderer.invoke("core:cancelChannelSync"),
+  researchVideos: (input) => ipcRenderer.invoke("core:researchVideos", input),
   getYouTube: () => ipcRenderer.invoke("core:getYouTube"),
   importYouTubeClient: () => ipcRenderer.invoke("core:importYouTubeClient"),
   connectYouTube: () => ipcRenderer.invoke("core:connectYouTube"),
