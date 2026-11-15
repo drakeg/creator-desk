@@ -1938,3 +1938,13 @@ dialog {
   border: 1px solid var(--line); border-radius: 8px;
   background: var(--surface); color: var(--ink); padding: 10px;
 }
+
+/* Comment triage: compact/dark layout reuses shared theme and card styles. */
+.research-content > .youtube-actions { align-items: center; gap: 10px; flex-wrap: wrap; }
+.research-content > .youtube-actions select {
+  min-width: min(100%, 220px); border: 1px solid var(--line);
+  border-radius: 8px; padding: 9px 10px;
+  background: var(--surface); color: var(--ink);
+}
+.research-result .change-card-heading { justify-content: space-between; }
+.research-result > p { overflow-wrap: anywhere; white-space: pre-wrap; }
