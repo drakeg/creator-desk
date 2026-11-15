@@ -1,104 +1,154 @@
-import { useEffect, useMemo, useState } from "react";
-import type { ChannelHistory, YouTubeState } from "../shared/youtube";
+import { useEffect, useState } from "react";
 import type { OptimizationResult } from "../shared/optimization";
 import { optimizationAdvice } from "../shared/optimization";
 import { ownedShortsUploads } from "../shared/owned-shorts";
+import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 
+type Draft = { title: string; description: string; tags: string };
+const draftOf = (video: OptimizationResult): Draft => ({
+  title: video.title, description: video.description, tags: video.tags.join(", "),
+});
+
+/** Owner-only, immediately loaded video recommendations; publishing requires a separate approval flow. */
 export function Optimize() {
-  const [connected, setConnected] = useState<YouTubeState | null>(null);
-  const [history, setHistory] = useState<ChannelHistory | null>(null);
-  const [selected, setSelected] = useState("");
-  const [data, setData] = useState<OptimizationResult | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [videos, setVideos] = useState<OptimizationResult[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState("");
   const [error, setError] = useState("");
-  const [draftTitle, setDraftTitle] = useState("");
-  const [draftDescription, setDraftDescription] = useState("");
-  const [draftTags, setDraftTags] = useState("");
+  const [notice, setNotice] = useState("");
+  const [count, setCount] = useState(0);
+
   useEffect(() => {
     let active = true;
-    void Promise.all([window.desktop.getYouTube(), window.desktop.getChannelHistory()])
-      .then(([connection, records]) => {
+    async function load() {
+      try {
+        const [connection, history] = await Promise.all([
+          window.desktop.getYouTube(), window.desktop.getChannelHistory(),
+        ]);
         if (!active) return;
-        if (connection.ok) setConnected(connection.value);
-        else setError(connection.error.message);
-        if (records.ok) setHistory(records.value);
-        else setError(records.error.message);
-      }).catch(() => { if (active) setError("Your channel library could not load."); });
+        if (!connection.ok || !history.ok) {
+          setError("Your YouTube channel history could not be loaded.");
+          return;
+        }
+        const own = ownedShortsUploads(
+          connection.value as YouTubeState, history.value as ChannelHistory | null,
+        ).slice(0, 8);
+        setCount(own.length);
+        if (!own.length) return;
+        // Bounded, sequential loading avoids a burst of YouTube Data API requests.
+        for (const item of own) {
+          if (!active) return;
+          const result = await window.desktop.optimizeVideo({ videoId: item.id });
+          if (!active) return;
+          if (result.ok) {
+            setVideos(current => [...current, result.value]);
+            setDrafts(current => ({ ...current, [item.id]: draftOf(result.value) }));
+            void window.desktop.getOwnVideoThumbnail({ videoId: item.id })
+              .then(photo => {
+                if (active && photo.ok && photo.value)
+                  setThumbnails(current => ({ ...current, [item.id]: photo.value! }));
+              }).catch(() => {});
+          } else {
+            setNotice("Some video recommendations could not be loaded. Use Refresh to retry.");
+          }
+        }
+      } catch {
+        if (active) setError("Could not load recommendations. Your saved YouTube data is unchanged.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    void load();
     return () => { active = false; };
   }, []);
-  const owned = ownedShortsUploads(connected, history);
-  const advice = useMemo(() => data ? optimizationAdvice(data) : null, [data]);
-  async function review() {
-    setError(""); setData(null); setBusy(true);
+
+  async function refresh(videoId: string) {
+    setRefreshing(videoId);
+    setError("");
     try {
-      const r = await window.desktop.optimizeVideo({ videoId: selected });
-      if (!r.ok) { setError(r.error.message); return; }
-      setData(r.value);
-      setDraftTitle(r.value.title);
-      setDraftDescription(r.value.description);
-      setDraftTags(r.value.tags.join(", "));
+      const result = await window.desktop.optimizeVideo({ videoId });
+      if (!result.ok) { setError(result.error.message); return; }
+      setVideos(current => current.map(item => item.videoId === videoId ? result.value : item));
+      setDrafts(current => ({ ...current, [videoId]: draftOf(result.value) }));
     } catch {
-      setError("Could not load this video's metadata. Try again.");
-    } finally { setBusy(false); }
+      setError("Could not refresh this video. Its existing recommendations remain visible.");
+    } finally { setRefreshing(""); }
+  }
+  function edit(videoId: string, key: keyof Draft, value: string) {
+    setDrafts(current => ({
+      ...current, [videoId]: { ...current[videoId]!, [key]: value },
+    }));
   }
   return <section className="research-content" aria-label="Video optimization recommendations">
     <div className="studio-intro">
-      <h2>Improve your video packaging</h2>
-      <p>Review your published title, description and tags alongside specific, editable recommendations.
-        Creator Desk makes no changes to YouTube.</p>
+      <h2>Recommendations for your channel</h2>
+      <p>Creator Desk reviews your latest synced uploads automatically. Video thumbnails appear beside
+        practical recommendations; expand any video to refine a draft. No changes are sent to YouTube
+        without a separate approval and write-permission workflow.</p>
     </div>
-    <div className="research-search">
-      <label htmlFor="optimize-video">Choose one of your channel's uploads</label>
-      <div className="youtube-actions">
-        <select id="optimize-video" value={selected} disabled={busy}
-          onChange={e => { setSelected(e.target.value); setData(null); }}>
-          <option value="">Choose your video</option>
-          {owned.map(v => <option key={v.id} value={v.id}>{v.title} ({v.id})</option>)}
-        </select>
-        <button className="button primary" type="button" disabled={busy || !selected}
-          onClick={() => void review()}>{busy ? "Reviewing…" : "Review metadata"}</button>
-      </div>
-    </div>
-    {!owned.length && <p className="field-note">Connect your YouTube channel and sync uploads in Dashboard first.
-      Public or competitor videos are never eligible for this review.</p>}
+    {loading && <p role="status">Checking your own videos and preparing recommendations…</p>}
+    {!loading && !count && <p className="field-note">Connect your YouTube channel and sync uploads in Dashboard
+      to receive automatic recommendations. Public and competitor videos are excluded.</p>}
+    {notice && <p role="status">{notice}</p>}
     {error && <p className="alert" role="alert">{error}</p>}
-    {data && advice && <div className="optimize-report">
-      <p className="field-note">Current YouTube metadata checked {new Date(data.fetchedAt).toLocaleString()}.
-        This is a content-quality checklist, not a search-volume estimate or a promise of more views.</p>
-      <h3>Recommendations</h3>
-      <ul>
-        {advice.tips.map((tip, i) => <li key={i}>
-          <strong>{tip.label} ({tip.field})</strong> — {tip.reason}
-        </li>)}
-      </ul>
-      {advice.candidateTags.length > 0 && <p><strong>Candidate phrases:</strong>{" "}
-        {advice.candidateTags.join(", ")}. Only use those that accurately describe the video.</p>}
-      <div className="change-fields">
-        <label>Current title
-          <textarea readOnly value={data.title} rows={2}/>
-        </label>
-        <label>Editable title draft
-          <textarea value={draftTitle} onChange={e => setDraftTitle(e.target.value)} rows={2} maxLength={100}/>
-        </label>
-        <label>Current description
-          <textarea readOnly value={data.description} rows={5}/>
-        </label>
-        <label>Editable description draft
-          <textarea value={draftDescription} onChange={e => setDraftDescription(e.target.value)} rows={5} maxLength={5000}/>
-        </label>
-        <label>Current tags
-          <textarea readOnly value={data.tags.join(", ")} rows={4}/>
-        </label>
-        <label>Editable tag draft (comma-separated)
-          <textarea value={draftTags} onChange={e => setDraftTags(e.target.value)} rows={4}/>
-        </label>
-      </div>
-      <button type="button" className="button secondary"
-        onClick={() => void navigator.clipboard.writeText(
-          `Title: ${draftTitle}\n\nDescription:\n${draftDescription}\n\nTags: ${draftTags}`
-        )}>Copy reviewed draft</button>
-      <p className="field-note">No publishing or metadata writes are enabled.
-        Review accuracy against your video before applying changes yourself.</p>
-    </div>}
+    <div className="optimize-feed">
+      {videos.map(video => {
+        const advice = optimizationAdvice(video);
+        const draft = drafts[video.videoId];
+        return <article className="optimize-feed-card" key={video.videoId}>
+          <div className="optimize-feed-media">
+            {thumbnails[video.videoId] ?
+              <img src={thumbnails[video.videoId]} alt={`Thumbnail for ${video.title}`} /> :
+              <div className="optimize-thumbnail-placeholder" role="img" aria-label="Thumbnail unavailable">
+                Thumbnail unavailable
+              </div>}
+            <p className="field-note">Your video · {video.videoId}</p>
+            <button className="button secondary" type="button"
+              disabled={refreshing === video.videoId}
+              onClick={() => void refresh(video.videoId)}>
+              {refreshing === video.videoId ? "Refreshing…" : "Refresh recommendations"}
+            </button>
+          </div>
+          <div className="optimize-feed-advice">
+            <h3>{video.title}</h3>
+            <p className="field-note">Checked {new Date(video.fetchedAt).toLocaleString()}.
+              Suggestions are content checks, not guaranteed growth.</p>
+            <ul>{advice.tips.map((tip, i) => <li key={i}>
+              <strong>{tip.label}</strong> ({tip.field}): {tip.reason}
+            </li>)}</ul>
+            {!!advice.candidateTags.length &&
+              <p><strong>Possible tags:</strong> {advice.candidateTags.join(", ")}.
+                Use only accurate phrases.</p>}
+            <details>
+              <summary>Edit recommendations for this video</summary>
+              {draft && <div className="optimize-edit-fields">
+                <label>Proposed title
+                  <textarea rows={2} maxLength={100} value={draft.title}
+                    onChange={e => edit(video.videoId, "title", e.target.value)}/>
+                </label>
+                <label>Proposed description
+                  <textarea rows={5} maxLength={5000} value={draft.description}
+                    onChange={e => edit(video.videoId, "description", e.target.value)}/>
+                </label>
+                <label>Proposed tags (comma-separated)
+                  <textarea rows={3} value={draft.tags}
+                    onChange={e => edit(video.videoId, "tags", e.target.value)}/>
+                </label>
+                <button type="button" className="button secondary" onClick={() => {
+                  void navigator.clipboard.writeText(
+                    `Title: ${draft.title}\n\nDescription:\n${draft.description}\n\nTags: ${draft.tags}`,
+                  ).then(() => setNotice("Reviewed draft copied."))
+                    .catch(() => setError("Could not copy this draft."));
+                }}>Copy edited draft</button>
+                <p className="field-note">Applying approved edits directly to YouTube is the next
+                  planned step. It will request write permission and confirm the exact changes.</p>
+              </div>}
+            </details>
+          </div>
+        </article>;
+      })}
+    </div>
   </section>;
 }
