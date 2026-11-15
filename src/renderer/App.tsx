@@ -15,6 +15,7 @@ import { Sidebar } from "./Sidebar";
 import { Settings } from "./Settings";
 import { ShortsStudio } from "./ShortsStudio";
 import { Research } from "./Research";
+import { Optimize } from "./Optimize";
 import { Dashboard } from "./Dashboard";
 import { Overview, type Destination } from "./Overview";
 export default function App() {
@@ -244,6 +245,8 @@ export default function App() {
               restore={() => void restore()}
               openDashboard={() => navigate("Dashboard")}
             />
+          ) : page === "Optimize" ? (
+            <Optimize key={selected?.id} />
           ) : page === "Research" ? (
             <Research key={selected?.id} />
           ) : page === "Studio" ? (

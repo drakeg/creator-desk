@@ -609,6 +609,14 @@ test("synchronizes daily analytics and uploads through the protected main-proces
             },
           }],
         });
+      if (url.pathname.endsWith("/videos") && url.searchParams.get("part") === "snippet")
+        return Response.json({ items: [{
+          id: "abcdefghijk",
+          snippet: {
+            channelId: channel, title: "Fixture upload",
+            description: "", tags: ["RV Solar", "rv solar"],
+          },
+        }] });
       if (url.pathname.endsWith("/videos") && url.searchParams.get("part") === "statistics")
         return Response.json({ items: [{
           id: "zzzzzzzzzzz",
@@ -657,6 +665,14 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await expect(research.getByRole("heading", { name: "RV solar battery upgrade" })).toBeVisible();
   await expect(research.getByText(/2,500/)).toBeVisible();
   await expect(research.getByText(/19 research searches remaining today/)).toBeVisible();
+  await page.getByRole("button", { name: "Optimize", exact: true }).click();
+  const optimize = page.getByRole("region", { name: "Video optimization recommendations" });
+  await optimize.getByLabel("Choose one of your channel's uploads").selectOption("abcdefghijk");
+  await optimize.getByRole("button", { name: "Review metadata" }).click();
+  await expect(optimize.getByText("Add a factual video summary")).toBeVisible();
+  await expect(optimize.getByText("Remove duplicate tags")).toBeVisible();
+  await expect(optimize.getByLabel("Current title")).toHaveValue("Fixture upload");
+  await optimize.getByLabel("Editable title draft").fill("Fixture upload with an accurate title");
   await page.getByRole("button", { name: "Studio", exact: true }).click();
   const ownVideos = page.getByRole("region", { name: "Your channel videos" });
   await expect(ownVideos.getByRole("option", { name: /Fixture upload/ })).toHaveCount(1);

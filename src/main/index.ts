@@ -28,6 +28,7 @@ import { saveChange, changeId, officialYouTubeSource } from "../shared/youtube-c
 import { YouTubeChanges } from "./youtube/change-tracker";
 import { dailySyncInput } from "../shared/youtube";
 import { researchInput } from "../shared/research";
+import { optimizationRequest } from "../shared/optimization";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
 import { registerShorts } from "./shorts/ipc";
@@ -164,6 +165,7 @@ function configureIPC() {
     await shell.openExternal("https://studio.youtube.com/");
     return null;
   });
+  handle("optimizeVideo", optimizationRequest, (input) => youtube.optimizeVideo(input));
   handle("getYouTube", z.undefined(), () => youtube.state());
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());

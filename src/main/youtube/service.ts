@@ -30,6 +30,7 @@ import { dailyReport, uploadReport } from "./report-data";
 import { dailySyncInput, type DailySyncInput } from "../../shared/youtube";
 import { googleJSON, type Transport } from "./http";
 import { researchInput, searchResponse, videosResponse, combineResearchResults } from "../../shared/research";
+import { optimizationRequest, optimizationResult } from "../../shared/optimization";
 const CLIENT = "youtube-client";
 const key = (id: string) => `youtube-${id}`;
 const cacheKey = (id: string) => `youtube-snapshot-${id}`;
@@ -407,6 +408,48 @@ export class YouTube {
         z.object({ date: z.string(), count: z.number().int().min(0).max(20) })
           .parse(this.store.setting(quotaKey, { date: today, count: 20 })).count,
       ));
+  }
+  /** Fetch current snippet only for an upload in this authenticated channel.
+   * No write scope is needed and no content is modified.
+   */
+  async optimizeVideo(input: unknown) {
+    const { videoId } = optimizationRequest.parse(input);
+    const workspace = this.workspace();
+    const connection = this.state();
+    if (!connection.connected || !connection.snapshot)
+      throw new CoreError("INVALID_INPUT", "Connect and sync your own YouTube channel first.");
+    const own = this.history();
+    if (!own || own.channelId !== connection.snapshot.id ||
+        !own.uploads?.rows.some(row => row.id === videoId))
+      throw new CoreError("INVALID_INPUT", "Choose a video from your connected channel's synced uploads.");
+    const token = await this.access(workspace);
+    const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+    url.search = new URLSearchParams({ part: "snippet", id: videoId }).toString();
+    const response = z.object({
+      items: z.array(z.object({
+        id: optimizationRequest.shape.videoId,
+        snippet: z.object({
+          channelId: z.string(),
+          title: z.string().min(1).max(100),
+          description: z.string().max(5000),
+          tags: z.array(z.string().min(1).max(500)).max(500).optional(),
+        }),
+      })).max(1),
+    }).safeParse(await googleJSON(url.href,
+      { headers: { Authorization: `Bearer ${token}` } }, this.transport));
+    if (!response.success || response.data.items.length !== 1 ||
+        response.data.items[0]!.id !== videoId ||
+        response.data.items[0]!.snippet.channelId !== connection.snapshot.id)
+      throw new CoreError("REMOTE_ERROR", "YouTube did not return metadata for this owned video.");
+    if (this.workspace() !== workspace || !this.state().connected ||
+        this.state().snapshot?.id !== connection.snapshot.id)
+      throw new CoreError("CANCELLED", "Channel changed while reviewing metadata.");
+    const snippet = response.data.items[0]!.snippet;
+    return optimizationResult.parse({
+      videoId, channelId: snippet.channelId, title: snippet.title,
+      description: snippet.description, tags: snippet.tags ?? [],
+      fetchedAt: new Date().toISOString(),
+    });
   }
   async syncUploads() {
     const id = this.workspace();

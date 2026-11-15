@@ -15,6 +15,12 @@ const modules = {
     icon: LayoutGrid,
     stage: "Stage 1 · Channel insights",
   },
+  Optimize: {
+    title: "Make your next upload stronger.",
+    text: "Review your own titles, descriptions and tags, with clear recommendations.",
+    icon: Sparkles,
+    stage: "Stage 3 · Optimization",
+  },
   Research: {
     title: "Find the next story worth telling.",
     text: "Keyword research, outlier videos, rising topics, and thumbnail references will help turn curiosity into your next video.",
