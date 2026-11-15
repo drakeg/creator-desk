@@ -600,7 +600,7 @@ export class YouTube {
           title: z.string().min(1).max(100),
           description: z.string().max(5000),
           tags: z.array(z.string().min(1).max(500)).max(500).optional(),
-          categoryId: z.string().regex(/^\\d+$/),
+          categoryId: z.string().regex(/^[0-9]+$/),
           defaultLanguage: z.string().max(35).optional(),
           defaultAudioLanguage: z.string().max(35).optional(),
         }),
