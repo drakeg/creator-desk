@@ -92,7 +92,7 @@ describe("explicit YouTube metadata updates", () => {
   it("updates only the approved video's snippet, verifies readback and logs the result", async () => {
     let current = { ...initial, tags: [...initial.tags] };
     const sent: unknown[] = [];
-    const transport: Transport = async (url, options) => {
+    const transport: Transport = async (_url, options) => {
       if (url.includes("/videos") && options.method === "PUT") {
         const body = JSON.parse(String(options.body));
         sent.push(body);
@@ -148,7 +148,7 @@ describe("explicit YouTube metadata updates", () => {
 
   it("does not retry when a YouTube PUT fails ambiguously", async () => {
     let writes = 0;
-    const { youtube } = setup(async (url, options) => {
+    const { youtube } = setup(async (_url, options) => {
       if (options.method === "PUT") {
         writes++;
         throw Error("Connection failed after server accepted request");
