@@ -2,6 +2,12 @@
 
 An installable desktop app for synchronizing YouTube channel history, importing supplemental analytics, and creating Shorts. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research and Optimize tools are available; competitor intelligence and the comments inbox are in development.
 
+## Try new features sooner
+
+Each feature PR produces macOS, Windows and Linux installer artifacts in its GitHub Actions **Desktop releases** run. Download a successful platform build from the run's **Artifacts** section without waiting for the next formal version bump; see [how to test PR builds](docs/TEST-BUILDS.md). Preview artifacts are retained for 14 days. PR builds may not include publisher-managed Google OAuth configuration.
+
+The current Creator Desk GUI includes **Research** (real topic/video discovery) and **Optimize** (read-only recommendations for your channel's title, description and tags). The updated/unanswered comments inbox, deeper AI recommendations and competitor/outlier tools remain in the Agile backlog.
+
 ## Create Shorts
 
 Open **Studio** and choose **Set up FFmpeg** for a verified download managed by the app, or select an existing FFmpeg executable. Then choose an MP4, MOV, M4V, or WebM source. Trim 1–180 seconds, adjust vertical framing, and export a 720×1280 H.264/AAC MP4. Timed captions can be burned into the video and also export as a uniquely named SRT sidecar. Your original video is never modified.
