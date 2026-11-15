@@ -1898,3 +1898,27 @@ dialog {
   color: var(--muted);
 }
 .change-summary strong { display: block; color: var(--ink); font-size: 22px; }
+
+/* Sprint 3: evidence-backed topic research; responsive and theme-aware. */
+.research-content { min-width: 0; padding-bottom: 24px; }
+.research-search { margin: 18px 0; }
+.research-search label { display: block; font-weight: 600; margin-bottom: 10px; }
+.research-search .youtube-actions { display: flex; align-items: stretch; flex-wrap: wrap; gap: 10px; }
+.research-search input {
+  flex: 1 1 260px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 11px 12px;
+  font: inherit;
+}
+.research-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 12px;
+}
+.research-result { margin: 0; }
+.research-result h3 { margin-top: 0; }
+.research-result .field-note { overflow-wrap: anywhere; }
