@@ -92,7 +92,7 @@ describe("explicit YouTube metadata updates", () => {
   it("updates only the approved video's snippet, verifies readback and logs the result", async () => {
     let current = { ...initial, tags: [...initial.tags] };
     const sent: unknown[] = [];
-    const transport: Transport = async (_url, options) => {
+    const transport: Transport = async (url, options) => {
       if (url.includes("/videos") && options.method === "PUT") {
         const body = JSON.parse(String(options.body));
         sent.push(body);
@@ -132,7 +132,7 @@ describe("explicit YouTube metadata updates", () => {
 
   it("rejects stale or wrong-channel requests before any YouTube PUT", async () => {
     let writes = 0;
-    const transport: Transport = async (url, options) => {
+    const transport: Transport = async (_url, options) => {
       if (options.method === "PUT") { writes++; return Response.json({ id: videoId }); }
       return Response.json({ items: [{
         id: videoId, snippet: { ...initial, title: "Someone changed this title" },
