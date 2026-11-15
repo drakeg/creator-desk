@@ -1,20 +1,33 @@
-Creator Desk 0.13.0 — Sprint 2: Audience retention and creator change tracking
+Creator Desk 0.14.0 — First vidIQ-replacement features to test
 
-Audience retention (Sprint 2 stories #35 and #36)
-- View retention for a selected owned YouTube upload from Dashboard → Retention or the video list, with date-range filters and 28-/90-day shortcuts.
-- Refresh video-specific audience watch-ratio and relative-retention curves from the YouTube Analytics API using read-only credentials; the app validates ownership and preserves previous saved data if a refresh fails.
-- See video-progress percentages and elapsed timestamps when the video's duration is available. Replays can exceed a 100% watch ratio. Relative retention is not the percentage of viewers remaining.
-- Save curves by channel, video, and date range for offline access. Missing or privacy-limited data is not treated as zero. Cache-age warnings explain that a snapshot may not include later activity.
-- Improved chart labels, dark/light themes, compact-window layout, keyboard access, error handling and cancellation.
+This release packages the already-merged creator-focused Research and Optimize features. It does not yet replace all paid vidIQ capabilities.
 
-Additional Creator Desk GUI capability
-- Dashboard → YouTube changes provides a channel-specific local register for official policy changes, monetization requirements, Shorts/long-form features, sponsorships and disclosures.
-- Track source, publication/effective dates when known, channel impact, required action, verification, follow-up dates, notes, and workflow status; review summary counts for tracked changes and due items.
-- Add or edit entries manually or paste a ChatGPT-prepared record for verification. Official HTTPS source domains are restricted; no rumor-based or automatically inferred eligibility data is inserted.
-- This desktop version does not automatically ingest the connected Mad Mallards YouTube Watch records, perform scheduled web monitoring, or offer native remote Chat synchronization. Those remain in the backlog for independent development.
+New: Topic Research
+- Open **Research** to search actual public YouTube videos by topic or keyword. Review titles, creator/channel names, publishing dates, and current cumulative view counts when available, with direct source links.
+- Research requires an authorized YouTube connection. Search is deliberately user-triggered and capped at 20 searches per workspace per UTC day; each request returns up to 10 videos. No fabricated keyword volume, proprietary scores or growth predictions.
+- Research results are for competitive discovery only and cannot be used as sources for Shorts.
 
-Availability and limitations
-- Live retention data requires authorized YouTube channel access and API support. Some video/date combinations may not return retention curves; no missing values are invented.
-- Changes are cached locally per Creator Desk workspace and included in normal database backups.
-- App packages are produced for macOS Apple Silicon and Intel, Windows x64, and Debian/Ubuntu Linux x64. macOS builds are ad hoc signed but not notarized; Windows builds are unsigned. SHA-256 checksums accompany release assets.
-- This release requires a successful four-platform CI run, installed-app tests, and verified release assets before it may be called released. No real Google account is used by synthetic automated tests.
+New: Video Optimize
+- Open **Optimize** and select one of the connected channel's own uploads to review its current title, description and tags.
+- Receive transparent, local rule-based guidance for title clarity, missing/short descriptions and duplicate tags; review candidate phrases found in the existing title.
+- Edit title, description and tag drafts, then copy the reviewed draft for manual application. This version does not publish metadata changes or automatically generate AI-backed alternatives.
+- Only videos from the authenticated channel's synced upload library are eligible.
+
+Improved: Owned-video Shorts workflow
+- Open **Studio** to choose your own uploaded video by title from the connected channel, or choose a local video as before.
+- Selecting a YouTube upload does not download media. To edit it, select an authorized local copy of that video. This is an interim handoff, not direct YouTube-video processing. No public or competitor videos are made available as Shorts source material.
+
+Existing features
+- Retention and Reach analytics, offline workspace data, and the YouTube changes register remain available.
+- The complete Mad Mallards YouTube Watch automation/reporting sync is not yet included in this desktop release.
+
+Upcoming — not included in v0.14.0
+- Updated/unanswered comments inbox and optional reply workflow
+- Advanced context-aware title, description and tag recommendations with explicit AI consent
+- Competitor/outlier analytics and saved idea planning
+- True direct-from-own-YouTube-video Shorts editing, subject to permitted media access
+
+Testing and package security
+- Native CI builds and installed-app checks cover macOS Apple Silicon, macOS Intel, Windows x64 and Debian/Ubuntu Linux x64. Verify all four build jobs, published artifacts and SHA-256 checksums before marking the release done.
+- macOS is ad hoc signed but not notarized, and Windows builds are unsigned. A build that has not completed CI is not a verified installer.
+- Test with the connected channel you own; AI models and third-party paid services are not required for the new rule-based recommendations.
