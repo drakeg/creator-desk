@@ -67,6 +67,7 @@ export interface DesktopCore {
   openResearchVideo(input: { videoId: string }): Promise<Result<null>>;
   researchVideos(input: import("./research").ResearchInput): Promise<Result<import("./research").ResearchResults>>;
   openYouTubeStudio(): Promise<Result<null>>;
+  getOwnVideoThumbnail(input: { videoId: string }): Promise<Result<string | null>>;
   optimizeVideo(input: { videoId: string }): Promise<Result<import("./optimization").OptimizationResult>>;
   getYouTube(): Promise<Result<YouTubeState>>;
   importYouTubeClient(): Promise<Result<YouTubeState | null>>;
