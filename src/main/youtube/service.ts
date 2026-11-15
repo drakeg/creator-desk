@@ -30,6 +30,7 @@ import { dailyReport, uploadReport } from "./report-data";
 import { dailySyncInput, type DailySyncInput } from "../../shared/youtube";
 import { googleJSON, type Transport } from "./http";
 import { researchInput, searchResponse, videosResponse, combineResearchResults } from "../../shared/research";
+import { inboxSnapshot, readCommentInput, threadPage, parseThreads } from "../../shared/comments";
 import { optimizationRequest, optimizationResult } from "../../shared/optimization";
 const CLIENT = "youtube-client";
 const key = (id: string) => `youtube-${id}`;
@@ -451,6 +452,86 @@ export class YouTube {
       fetchedAt: new Date().toISOString(),
     });
   }
+  private commentsKey(id: string) { return `comments-inbox:${id}`; }
+
+  commentsInbox() {
+    const workspace = this.workspace();
+    const state = this.state();
+    if (!state.connected || !state.snapshot)
+      throw new CoreError("INVALID_INPUT", "Connect and sync your channel to see its comments.");
+    const raw = this.store.setting<unknown>(this.commentsKey(workspace), null);
+    if (raw === null) return null;
+    const snapshot = inboxSnapshot.parse(raw);
+    return snapshot.channelId === state.snapshot.id ? snapshot : null;
+  }
+
+  async refreshComments() {
+    const workspace = this.workspace();
+    const connection = this.state();
+    if (!connection.connected || !connection.snapshot)
+      throw new CoreError("INVALID_INPUT", "Connect and sync your own channel first.");
+    const channelId = connection.snapshot.id;
+    const previous = this.commentsInbox();
+    const token = await this.access(workspace);
+    const pages = [];
+    const seenTokens = new Set<string>();
+    let next: string | undefined;
+    let complete = true;
+    // First two pages (at most 100 threads) are a deliberately bounded snapshot.
+    for (let page = 0; page < 2; page++) {
+      const url = new URL("https://www.googleapis.com/youtube/v3/commentThreads");
+      url.search = new URLSearchParams({
+        part: "snippet,replies",
+        allThreadsRelatedToChannelId: channelId,
+        textFormat: "plainText",
+        order: "time", maxResults: "50",
+        ...(next ? { pageToken: next } : {}),
+      }).toString();
+      const raw = await googleJSON(url.href,
+        { headers: { Authorization: `Bearer ${token}` } }, this.transport);
+      const response = threadPage.safeParse(raw);
+      if (!response.success)
+        throw new CoreError("REMOTE_ERROR", "YouTube returned invalid comment data. Your inbox was preserved.");
+      pages.push(response.data);
+      next = response.data.nextPageToken;
+      if (!next) break;
+      if (seenTokens.has(next))
+        throw new CoreError("REMOTE_ERROR", "YouTube repeated a comments page. Your inbox was preserved.");
+      seenTokens.add(next);
+      if (page === 1) complete = false;
+    }
+    if (this.workspace() !== workspace || !this.state().connected ||
+        this.state().snapshot?.id !== channelId)
+      throw new CoreError("CANCELLED", "Channel changed. Existing comment history was preserved.");
+    const result = parseThreads(pages, channelId, previous, complete, new Date().toISOString());
+    this.store.transaction(() => {
+      if (this.workspace() !== workspace || this.state().snapshot?.id !== channelId)
+        throw new CoreError("CANCELLED", "Channel changed. Existing comment history was preserved.");
+      this.store.db.prepare("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+        .run(this.commentsKey(workspace), JSON.stringify(result));
+    });
+    return result;
+  }
+
+  markCommentRead(input: unknown) {
+    const { id } = readCommentInput.parse(input);
+    const snapshot = this.commentsInbox();
+    if (!snapshot || !snapshot.items.some(item => item.id === id))
+      throw new CoreError("NOT_FOUND", "That comment isn't in this channel's inbox.");
+    const next = inboxSnapshot.parse({
+      ...snapshot, items: snapshot.items.map(item => item.id === id
+        ? { ...item, unread: false } : item),
+    });
+    const workspace = this.workspace();
+    this.store.transaction(() => {
+      if (this.workspace() !== workspace || this.state().snapshot?.id !== snapshot.channelId)
+        throw new CoreError("CANCELLED", "Channel changed. No comments were updated.");
+      this.store.db.prepare("UPDATE settings SET value=? WHERE key=?")
+        .run(JSON.stringify(next), this.commentsKey(workspace));
+    });
+    return next;
+  }
+
   async syncUploads() {
     const id = this.workspace();
     const token = await this.access(id);
