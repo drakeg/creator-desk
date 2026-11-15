@@ -12,6 +12,8 @@ import {
   desktopClient,
   exchange,
   ANALYTICS_SCOPE,
+  SCOPES,
+  EDIT_SCOPE,
   tokens,
   type Client,
   type Tokens,
@@ -30,9 +32,10 @@ import { dailyReport, uploadReport } from "./report-data";
 import { dailySyncInput, type DailySyncInput } from "../../shared/youtube";
 import { googleJSON, type Transport } from "./http";
 import { researchInput, searchResponse, videosResponse, combineResearchResults } from "../../shared/research";
-import { optimizationRequest, optimizationResult } from "../../shared/optimization";
+import { optimizationRequest, optimizationResult, approvedMetadataUpdate } from "../../shared/optimization";
 const CLIENT = "youtube-client";
 const key = (id: string) => `youtube-${id}`;
+const editKey = (id: string) => `youtube-edit-${id}`;
 const cacheKey = (id: string) => `youtube-snapshot-${id}`;
 const count = z
   .string()
@@ -63,6 +66,7 @@ type Authorize = (
   open: (url: string) => Promise<void>,
   signal: AbortSignal,
   transport?: Transport,
+  scopes?: string[],
 ) => Promise<Tokens>;
 export class YouTube {
   private syncs = new Map<
@@ -78,6 +82,8 @@ export class YouTube {
   >();
   private attempts = new Map<string, AbortController>();
   private errors = new Map<string, string>();
+  private editAttempts = new Map<string, AbortController>();
+  private editErrors = new Map<string, string>();
   constructor(
     private store: Store,
     private vault: CredentialVault,
@@ -111,6 +117,9 @@ export class YouTube {
       connected: !!id && this.vault.has(key(id)),
       pending: !!id && this.attempts.has(id),
       error: id ? this.errors.get(id) || null : null,
+      editingConnected: !!id && this.vault.has(editKey(id)),
+      editingPending: !!id && this.editAttempts.has(id),
+      editingError: id ? this.editErrors.get(id) || null : null,
       snapshot: parsed.success ? parsed.data : null,
       reachSync: !!id && this.reachControllers.has(id),
       sync:
@@ -130,8 +139,8 @@ export class YouTube {
   private requireConfigurable() {
     // Keep clients with their tokens: replacing application configuration cannot silently rebind an account.
     if (
-      this.store.state().workspaces.some((w) => this.vault.has(key(w.id))) ||
-      this.attempts.size
+      this.store.state().workspaces.some((w) => this.vault.has(key(w.id)) || this.vault.has(editKey(w.id))) ||
+      this.attempts.size || this.editAttempts.size
     )
       throw new CoreError(
         "INVALID_INPUT",
@@ -192,6 +201,58 @@ export class YouTube {
       });
     return this.state();
   }
+  /** Editing permissions are separate and never needed to read recommendations.
+   * The elevated scope can also authorize deleting videos/comments: warn before prompting.
+   */
+  connectEditing() {
+    const id = this.workspace();
+    const connection = this.state();
+    if (!connection.connected || !connection.snapshot)
+      throw new CoreError("INVALID_INPUT", "Connect and sync your YouTube channel first.");
+    if (this.vault.has(editKey(id)) || this.editAttempts.has(id))
+      throw new CoreError("INVALID_INPUT", "Editing is already connected or authorization is pending.");
+    const stored = this.vault.get(key(id));
+    if (!stored)
+      throw new CoreError("INVALID_INPUT", "Read-only channel connection is required first.");
+    const account = z.object({ client: desktopClient, tokens }).parse(JSON.parse(stored));
+    const channelId = connection.snapshot.id;
+    this.vault.assertAvailable();
+    const controller = new AbortController();
+    this.editAttempts.set(id, controller);
+    this.editErrors.delete(id);
+    void this.authorize(account.client, this.open, controller.signal, this.transport,
+      [...SCOPES, EDIT_SCOPE])
+      .then(async (token) => {
+        if (controller.signal.aborted) return;
+        if (!token.scopes.includes(EDIT_SCOPE))
+          throw new CoreError("REMOTE_ERROR", "Google did not grant the requested editing permission.");
+        const result = z.object({
+          items: z.array(z.object({ id: channelSnapshot.shape.id })).max(10),
+        }).safeParse(await googleJSON(
+          "https://www.googleapis.com/youtube/v3/channels?part=id&mine=true",
+          { headers: { Authorization: `Bearer ${token.access_token}` },
+            signal: controller.signal }, this.transport,
+        ));
+        if (!result.success || result.data.items.length !== 1 ||
+            result.data.items[0]!.id !== channelId)
+          throw new CoreError("INVALID_INPUT", "The Google account granting edit access does not match this channel.");
+        if (!controller.signal.aborted && this.store.state().selectedWorkspaceId === id &&
+            this.vault.get(key(id)) === stored && this.state().snapshot?.id === channelId)
+          this.vault.set(editKey(id), JSON.stringify({
+            client: account.client, tokens: token, channelId,
+          }));
+      })
+      .catch(error => {
+        if (!controller.signal.aborted)
+          this.editErrors.set(id, error instanceof CoreError ? error.message :
+            "Editing permission could not be granted. Your read-only connection is unchanged.");
+      })
+      .finally(() => {
+        if (this.editAttempts.get(id) === controller) this.editAttempts.delete(id);
+      });
+    return this.state();
+  }
+
   cancelAll() {
     for (const controller of this.retentionControllers.values()) controller.abort();
     this.retentionControllers.clear();
@@ -203,7 +264,10 @@ export class YouTube {
     this.syncs.clear();
     for (const controller of this.attempts.values()) controller.abort();
     this.attempts.clear();
+    for (const controller of this.editAttempts.values()) controller.abort();
+    this.editAttempts.clear();
     this.errors.clear();
+    this.editErrors.clear();
   }
   cancel() {
     const id = this.workspace();
@@ -218,6 +282,10 @@ export class YouTube {
     this.syncs.get(id)?.controller.abort();
     this.reachControllers.get(id)?.abort();
     this.retentionControllers.get(id)?.abort();
+    this.editAttempts.get(id)?.abort();
+    this.editAttempts.delete(id);
+    this.editErrors.delete(id);
+    this.vault.delete(editKey(id));
     this.vault.delete(key(id));
     this.store.transaction(() =>
       this.store.db
