@@ -114,10 +114,20 @@ describe("explicit YouTube metadata updates", () => {
     expect(updated.title).toBe(proposed.title);
     expect(updated.tags).toEqual(proposed.tags);
     expect(sent).toHaveLength(1);
-    const history = store.setting<unknown>(`youtube-metadata-audit:${workspace.id}`, null);
-    expect(history).toMatchObject([{
-      videoId, channelId: channel, result: "verified", after: proposed,
-    }]);
+    const history = store.db.prepare(
+      "SELECT key,value FROM settings WHERE key LIKE ?",
+    ).all(`youtube-metadata-audit:${workspace.id}:%`) as { key: string; value: string }[];
+    expect(history).toHaveLength(3);
+    const meta = history.find(row => row.key.endsWith(":meta"));
+    const before = history.find(row => row.key.endsWith(":before"));
+    const after = history.find(row => row.key.endsWith(":after"));
+    expect(JSON.parse(meta!.value)).toMatchObject({
+      videoId, channelId: channel, result: "verified",
+    });
+    expect(JSON.parse(before!.value)).toMatchObject({ title: original.title });
+    expect(JSON.parse(after!.value)).toEqual(proposed);
+    const { checkDatabase } = await import("../../src/main/storage/schema");
+    expect(() => checkDatabase(store.db)).not.toThrow();
   });
 
   it("rejects stale or wrong-channel requests before any YouTube PUT", async () => {
