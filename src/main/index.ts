@@ -166,6 +166,7 @@ function configureIPC() {
     await shell.openExternal("https://studio.youtube.com/");
     return null;
   });
+  handle("getOwnVideoThumbnail", optimizationRequest, (input) => youtube.ownVideoThumbnail(input));
   handle("optimizeVideo", optimizationRequest, (input) => youtube.optimizeVideo(input));
   handle("getCommentsInbox", z.undefined(), () => youtube.commentsInbox());
   handle("refreshComments", z.undefined(), () => youtube.refreshComments());

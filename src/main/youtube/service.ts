@@ -410,6 +410,38 @@ export class YouTube {
           .parse(this.store.setting(quotaKey, { date: today, count: 20 })).count,
       ));
   }
+  /** A fixed-origin, size-bounded thumbnail bridge keeps remote images out of the renderer.
+   * Only the authenticated channel's cached uploads are eligible.
+   */
+  async ownVideoThumbnail(input: unknown): Promise<string | null> {
+    const { videoId } = optimizationRequest.parse(input);
+    const workspace = this.workspace();
+    const connection = this.state();
+    if (!connection.connected || !connection.snapshot)
+      throw new CoreError("INVALID_INPUT", "Connect and sync your own YouTube channel first.");
+    const history = this.history();
+    if (history?.channelId !== connection.snapshot.id ||
+        !history.uploads?.rows.some(row => row.id === videoId))
+      throw new CoreError("INVALID_INPUT", "This is not one of your channel's synced uploads.");
+    try {
+      const response = await this.transport(
+        `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+        { redirect: "error", signal: AbortSignal.timeout(8000) },
+      );
+      if (!response.ok || !response.headers.get("content-type")?.startsWith("image/jpeg"))
+        return null;
+      const raw = new Uint8Array(await response.arrayBuffer());
+      if (!raw.length || raw.length > 180000 || raw[0] !== 0xff || raw[1] !== 0xd8)
+        return null;
+      if (this.workspace() !== workspace || this.state().snapshot?.id !== connection.snapshot.id)
+        throw new CoreError("CANCELLED", "Channel changed while loading the thumbnail.");
+      return `data:image/jpeg;base64,${Buffer.from(raw).toString("base64")}`;
+    } catch (error) {
+      if (error instanceof CoreError) throw error;
+      return null; // Keep the feed functional when thumbnail CDN is unavailable.
+    }
+  }
+
   /** Fetch current snippet only for an upload in this authenticated channel.
    * No write scope is needed and no content is modified.
    */
