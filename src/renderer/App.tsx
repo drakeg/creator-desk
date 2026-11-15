@@ -32,8 +32,15 @@ export default function App() {
     void window.desktop
       .getState()
       .then((result) => {
-        if (result.ok) setState(result.value);
-        else setError(result.error.message);
+        if (result.ok) {
+          setState(result.value);
+          if (result.value.selectedWorkspaceId) {
+            void window.desktop.getYouTube().then(youtube => {
+              if (youtube.ok && youtube.value.connected)
+                setPage(current => current === "Dashboard" ? "Optimize" : current);
+            }).catch(() => {});
+          }
+        } else setError(result.error.message);
       })
       .catch(() =>
         setError(
