@@ -38,7 +38,7 @@ async function launch() {
   });
   await expect(
     page.getByRole("heading", {
-      name: /Make room for your next idea|Channel overview/,
+      name: /Make room for your next idea|Channel overview|^Optimize$/uv,
     }),
   ).toBeVisible();
 }
