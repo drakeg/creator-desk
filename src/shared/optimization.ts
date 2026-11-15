@@ -71,3 +71,29 @@ export function optimizationAdvice(data: OptimizationResult): {
   });
   return { tips, candidateTags };
 }
+
+/** Exact-diff, per-video approval. These are draft values, not automatic suggestions. */
+export const approvedMetadataUpdate = z.object({
+  original: optimizationResult,
+  proposed: z.object({
+    title: z.string().trim().min(1).max(100).refine(v => !/[<>]/.test(v)),
+    description: z.string().max(5000).refine(v =>
+      !/[<>]/.test(v) && BufferByteLength(v) <= 5000,
+      "YouTube descriptions must be at most 5,000 UTF-8 bytes and cannot contain angle brackets.",
+    ),
+    tags: z.array(z.string().trim().min(1).max(500)).max(100),
+  }).strict().refine(v => {
+    const length = v.tags.map(t => t.includes(" ") ? t.length + 2 : t.length)
+      .reduce((total, n) => total + n + 1, 0);
+    return length <= 500 && v.tags.every(t => !/[<>]/.test(t));
+  }, "YouTube tag length exceeds 500 characters or contains unsupported characters."),
+  approved: z.literal(true),
+}).strict().refine(v => v.proposed.title !== v.original.title ||
+  v.proposed.description !== v.original.description ||
+  JSON.stringify(v.proposed.tags) !== JSON.stringify(v.original.tags),
+  "No metadata changes to apply.",
+);
+function BufferByteLength(text: string) {
+  return new TextEncoder().encode(text).length;
+}
+export type ApprovedMetadataUpdate = z.infer<typeof approvedMetadataUpdate>;
