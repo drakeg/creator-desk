@@ -29,6 +29,7 @@ import { Reports } from "../imports/reports";
 import { dailyReport, uploadReport } from "./report-data";
 import { dailySyncInput, type DailySyncInput } from "../../shared/youtube";
 import { googleJSON, type Transport } from "./http";
+import { researchInput, searchResponse, videosResponse, combineResearchResults } from "../../shared/research";
 const CLIENT = "youtube-client";
 const key = (id: string) => `youtube-${id}`;
 const cacheKey = (id: string) => `youtube-snapshot-${id}`;
@@ -340,6 +341,72 @@ export class YouTube {
       periodStart: data!.rows[0]!.date,
       periodEnd: data!.rows.at(-1)!.date,
     });
+  }
+  /** A deliberate, user-triggered vidIQ-style discovery search, not background polling.
+   * A conservative daily allowance protects the shared YouTube API quota.
+   */
+  async research(input: unknown) {
+    const { query } = researchInput.parse(input);
+    const id = this.workspace();
+    const connection = this.state();
+    if (!connection.connected || !connection.snapshot)
+      throw new CoreError("INVALID_INPUT", "Connect and sync your own YouTube channel before researching topics.");
+    const quotaKey = `research-quota:${id}`;
+    const today = new Date().toISOString().slice(0, 10);
+    const saved = z.object({
+      date: z.string(),
+      count: z.number().int().min(0).max(20),
+    }).safeParse(this.store.setting(quotaKey, { date: today, count: 0 }));
+    const used = saved.success && saved.data.date === today ? saved.data.count : 0;
+    if (used >= 20)
+      throw new CoreError("INVALID_INPUT", "Research limit reached for today (20 searches). Try again tomorrow.");
+    const token = await this.access(id);
+    if (this.workspace() !== id)
+      throw new CoreError("CANCELLED", "Channel changed. Search cancelled.");
+    // Reserve a request before making network calls; a failed call can still consume quota.
+    this.store.transaction(() => {
+      const current = z.object({ date: z.string(), count: z.number().int().min(0).max(20) })
+        .safeParse(this.store.setting(quotaKey, { date: today, count: 0 }));
+      const count = current.success && current.data.date === today ? current.data.count : 0;
+      if (count >= 20) throw new CoreError("INVALID_INPUT", "Research search limit reached for today.");
+      this.store.db.prepare(
+        "INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+      ).run(quotaKey, JSON.stringify({ date: today, count: count + 1 }));
+    });
+    const url = new URL("https://www.googleapis.com/youtube/v3/search");
+    url.search = new URLSearchParams({
+      part: "snippet",
+      type: "video",
+      q: query,
+      maxResults: "10",
+      order: "relevance",
+      safeSearch: "moderate",
+    }).toString();
+    const search = searchResponse.safeParse(await googleJSON(
+      url.href, { headers: { Authorization: `Bearer ${token}` } }, this.transport,
+    ));
+    if (!search.success)
+      throw new CoreError("REMOTE_ERROR", "YouTube returned invalid search metadata. No results were saved.");
+    const detailsUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+    detailsUrl.search = new URLSearchParams({
+      part: "statistics",
+      id: search.data.items.map((item) => item.id.videoId).join(","),
+    }).toString();
+    const details = search.data.items.length
+      ? videosResponse.safeParse(await googleJSON(
+          detailsUrl.href, { headers: { Authorization: `Bearer ${token}` } }, this.transport,
+        ))
+      : videosResponse.safeParse({ items: [] });
+    if (!details.success)
+      throw new CoreError("REMOTE_ERROR", "YouTube returned invalid video statistics. No results were saved.");
+    if (this.workspace() !== id || !this.state().connected ||
+        this.state().snapshot?.id !== connection.snapshot.id)
+      throw new CoreError("CANCELLED", "Channel changed during research. Results discarded.");
+    return combineResearchResults(query, search.data, details.data,
+      new Date().toISOString(), 20 - Number(
+        z.object({ date: z.string(), count: z.number().int().min(0).max(20) })
+          .parse(this.store.setting(quotaKey, { date: today, count: 20 })).count,
+      ));
   }
   async syncUploads() {
     const id = this.workspace();
