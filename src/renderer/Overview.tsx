@@ -21,6 +21,12 @@ const modules = {
     icon: Sparkles,
     stage: "Stage 3 · Optimization",
   },
+  Comments: {
+    title: "Stay close to your audience.",
+    text: "Review newly updated threads and replies from your connected channel.",
+    icon: Users,
+    stage: "Stage 3 · Community",
+  },
   Research: {
     title: "Find the next story worth telling.",
     text: "Keyword research, outlier videos, rising topics, and thumbnail references will help turn curiosity into your next video.",
