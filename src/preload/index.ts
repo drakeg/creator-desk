@@ -51,6 +51,7 @@ const core: DesktopCore = {
   openResearchVideo: (input) => ipcRenderer.invoke("core:openResearchVideo", input),
   researchVideos: (input) => ipcRenderer.invoke("core:researchVideos", input),
   openYouTubeStudio: () => ipcRenderer.invoke("core:openYouTubeStudio"),
+  optimizeVideo: (input) => ipcRenderer.invoke("core:optimizeVideo", input),
   getYouTube: () => ipcRenderer.invoke("core:getYouTube"),
   importYouTubeClient: () => ipcRenderer.invoke("core:importYouTubeClient"),
   connectYouTube: () => ipcRenderer.invoke("core:connectYouTube"),
