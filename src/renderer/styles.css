@@ -1922,3 +1922,19 @@ dialog {
 .research-result { margin: 0; }
 .research-result h3 { margin-top: 0; }
 .research-result .field-note { overflow-wrap: anywhere; }
+
+.optimize-report { margin: 18px 0; }
+.optimize-report li { padding: 7px 0; line-height: 1.6; }
+.optimize-report .change-fields { margin: 14px 0; }
+.optimize-report textarea {
+  width: 100%; max-width: 100%; min-width: 0;
+  padding: 10px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px;
+  font: inherit; resize: vertical;
+}
+.optimize-report textarea[readonly] { opacity: .75; }
+.research-search select {
+  flex: 1 1 260px; min-width: 0; max-width: 100%;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--ink); padding: 10px;
+}
