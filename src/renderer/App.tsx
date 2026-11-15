@@ -28,6 +28,7 @@ export default function App() {
   const [name, setName] = useState("My channel");
   const [preview, setPreview] = useState<RestorePreview | null>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const userNavigated = useRef(false);
   useEffect(() => {
     void window.desktop
       .getState()
@@ -36,7 +37,7 @@ export default function App() {
           setState(result.value);
           if (result.value.selectedWorkspaceId) {
             void window.desktop.getYouTube().then(youtube => {
-              if (youtube.ok && youtube.value.connected)
+              if (youtube.ok && youtube.value.connected && !userNavigated.current)
                 setPage(current => current === "Dashboard" ? "Optimize" : current);
             }).catch(() => {});
           }
@@ -112,6 +113,7 @@ export default function App() {
     });
   }
   function navigate(next: Destination) {
+    userNavigated.current = true;
     setPage(next);
     setNotice("");
     requestAnimationFrame(() => titleRef.current?.focus());
