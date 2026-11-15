@@ -525,6 +525,15 @@ test("synchronizes daily analytics and uploads through the protected main-proces
           scopes,
         },
       }),
+      [`youtube-edit-${id}`]: encode({
+        client, channelId: "UC1234567890123456789012",
+        tokens: {
+          access_token: "fixture-editor",
+          refresh_token: "fixture-editor-refresh",
+          expiresAt: Date.now() + 3600000,
+          scopes: [...scopes, "https://www.googleapis.com/auth/youtube.force-ssl"],
+        },
+      }),
     }),
   );
   await app.evaluate(({ safeStorage }) => {
@@ -533,7 +542,8 @@ test("synchronizes daily analytics and uploads through the protected main-proces
     safeStorage.getSelectedStorageBackend = () => "gnome_libsecret";
     safeStorage.decryptString = (value) => value.toString();
     safeStorage.encryptString = (value) => Buffer.from(value);
-    globalThis.fetch = async (raw) => {
+    let changedTitle = "Fixture upload";
+    globalThis.fetch = async (raw, init) => {
       const url = new URL(String(raw));
       const channel = "UC1234567890123456789012";
       if (url.hostname === "youtubeanalytics.googleapis.com" &&
@@ -609,11 +619,20 @@ test("synchronizes daily analytics and uploads through the protected main-proces
             },
           }],
         });
+      if (url.pathname.endsWith("/videos") && init?.method === "PUT") {
+        const body = JSON.parse(String(init.body));
+        if (init.headers && (init.headers as Record<string, string>).Authorization !== "Bearer fixture-editor")
+          throw new Error("Write must use editing permission");
+        if (body.id !== "abcdefghijk" || body.snippet.categoryId !== "22")
+          throw new Error("Write must preserve YouTube video category");
+        changedTitle = body.snippet.title;
+        return Response.json({ id: "abcdefghijk" });
+      }
       if (url.pathname.endsWith("/videos") && url.searchParams.get("part") === "snippet")
         return Response.json({ items: [{
           id: "abcdefghijk",
           snippet: {
-            channelId: channel, title: "Fixture upload",
+            channelId: channel, title: changedTitle, categoryId: "22",
             description: "", tags: ["RV Solar", "rv solar"],
           },
         }] });
@@ -675,6 +694,13 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await card.getByText("Edit recommendations for this video").click();
   await expect(card.getByLabel("Proposed title")).toHaveValue("Fixture upload");
   await card.getByLabel("Proposed title").fill("Fixture upload with an accurate title");
+  await card.getByRole("button", { name: "Review changes to apply" }).click();
+  const approval = card.getByRole("dialog", { name: "Approve exact YouTube metadata changes" });
+  await expect(approval.getByText("Before: Fixture upload")).toBeVisible();
+  await expect(approval.getByText("After: Fixture upload with an accurate title")).toBeVisible();
+  await approval.getByRole("button", { name: "Confirm and update this YouTube video" }).click();
+  await expect(optimize.getByText(/YouTube confirmed and saved/)).toBeVisible();
+  await expect(card.getByRole("heading", { name: "Fixture upload with an accurate title" })).toBeVisible();
   await page.getByRole("button", { name: "Studio", exact: true }).click();
   const ownVideos = page.getByRole("region", { name: "Your channel videos" });
   await expect(ownVideos.getByRole("option", { name: /Fixture upload/ })).toHaveCount(1);
