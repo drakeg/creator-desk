@@ -71,6 +71,9 @@ export interface DesktopCore {
   applyApprovedMetadata(input: import("./optimization").ApprovedMetadataUpdate): Promise<Result<import("./optimization").OptimizationResult>>;
   getOwnVideoThumbnail(input: { videoId: string }): Promise<Result<string | null>>;
   optimizeVideo(input: { videoId: string }): Promise<Result<import("./optimization").OptimizationResult>>;
+  getCommentsInbox(): Promise<Result<import("./comments").InboxSnapshot | null>>;
+  refreshComments(): Promise<Result<import("./comments").InboxSnapshot>>;
+  markCommentRead(input: { id: string }): Promise<Result<import("./comments").InboxSnapshot>>;
   getYouTube(): Promise<Result<YouTubeState>>;
   importYouTubeClient(): Promise<Result<YouTubeState | null>>;
   connectYouTube(): Promise<Result<YouTubeState>>;

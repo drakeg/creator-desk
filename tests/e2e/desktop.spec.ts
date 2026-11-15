@@ -607,6 +607,24 @@ test("synchronizes daily analytics and uploads through the protected main-proces
                 },
           ],
         });
+      if (url.pathname.endsWith("/commentThreads"))
+        return Response.json({ items: [{
+          id: "fixture-thread",
+          snippet: {
+            channelId: channel, videoId: "abcdefghijk",
+            topLevelComment: {
+              id: "fixture-comment",
+              snippet: {
+                authorDisplayName: "Helpful viewer",
+                authorChannelId: { value: "UC0000000000000000000000" },
+                textOriginal: "Can you explain the battery installation?",
+                publishedAt: "2026-11-14T10:00:00Z",
+                updatedAt: "2026-11-14T10:00:00Z",
+              },
+            },
+            totalReplyCount: 0,
+          },
+        }] });
       if (url.pathname.endsWith("/search"))
         return Response.json({
           items: [{
@@ -701,6 +719,16 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await approval.getByRole("button", { name: "Confirm and update this YouTube video" }).click();
   await expect(optimize.getByText(/YouTube confirmed and saved/)).toBeVisible();
   await expect(card.getByRole("heading", { name: "Fixture upload with an accurate title" })).toBeVisible();
+  await page.getByRole("button", { name: "Comments", exact: true }).click();
+  const inbox = page.getByRole("region", { name: "Channel comments inbox" });
+  await inbox.getByRole("button", { name: "Refresh comments" }).click();
+  await expect(inbox.getByRole("heading", { name: "Helpful viewer" })).toBeVisible();
+  await expect(inbox.getByText("No channel reply in this thread")).toBeVisible();
+  await inbox.getByRole("button", { name: "Mark reviewed" }).click();
+  await inbox.getByLabel("Show").selectOption("new");
+  await expect(inbox.getByText("No comments match this filter in the current snapshot.")).toBeVisible();
+  await inbox.getByLabel("Show").selectOption("unanswered");
+  await expect(inbox.getByRole("heading", { name: "Helpful viewer" })).toBeVisible();
   await page.getByRole("button", { name: "Studio", exact: true }).click();
   const ownVideos = page.getByRole("region", { name: "Your channel videos" });
   await expect(ownVideos.getByRole("option", { name: /Fixture upload/ })).toHaveCount(1);

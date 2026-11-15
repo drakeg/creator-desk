@@ -28,6 +28,7 @@ const navigation = [
   { name: "Dashboard", icon: LayoutGrid },
   { name: "Research", icon: Compass },
   { name: "Optimize", icon: ShieldCheck },
+  { name: "Comments", icon: Users },
   { name: "Competitors", icon: Users },
   { name: "Projects", icon: FolderClosed },
   { name: "Studio", icon: Clapperboard },
