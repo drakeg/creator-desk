@@ -29,6 +29,7 @@ import { YouTubeChanges } from "./youtube/change-tracker";
 import { dailySyncInput } from "../shared/youtube";
 import { researchInput } from "../shared/research";
 import { optimizationRequest } from "../shared/optimization";
+import { readCommentInput } from "../shared/comments";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
 import { registerShorts } from "./shorts/ipc";
@@ -167,6 +168,9 @@ function configureIPC() {
   });
   handle("getOwnVideoThumbnail", optimizationRequest, (input) => youtube.ownVideoThumbnail(input));
   handle("optimizeVideo", optimizationRequest, (input) => youtube.optimizeVideo(input));
+  handle("getCommentsInbox", z.undefined(), () => youtube.commentsInbox());
+  handle("refreshComments", z.undefined(), () => youtube.refreshComments());
+  handle("markCommentRead", readCommentInput, (input) => youtube.markCommentRead(input));
   handle("getYouTube", z.undefined(), () => youtube.state());
   handle("connectYouTube", z.undefined(), () => youtube.connect());
   handle("cancelYouTube", z.undefined(), () => youtube.cancel());
