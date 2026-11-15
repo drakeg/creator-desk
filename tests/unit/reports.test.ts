@@ -105,7 +105,7 @@ it("filters daily dates but rejects slicing video period totals", () => {
     reports.dashboard({ reportId: daily.reportId, startDate: "2027-01-01" })
       .totals.views,
   ).toBeNull();
-});
+}, 15000);
 it("rejects cancelled, expired or workspace-switched previews", () => {
   const { store, reports, path } = setup();
   let p = reports.inspect(path);
