@@ -691,6 +691,9 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   if (!cache.ok || !cache.value) throw new Error("History missing");
   expect(cache.value.daily?.rows).toHaveLength(2);
   expect(cache.value.uploads?.rows).toHaveLength(1);
+  // Startup can retain a different analytics sub-tab; explicitly open the
+  // connected-channel library before asserting its table contents.
+  await page.getByRole("button", { name: "Connected channel", exact: true }).click();
   await expect(
     page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
   ).toBeVisible();
