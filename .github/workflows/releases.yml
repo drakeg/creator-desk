@@ -68,6 +68,25 @@ jobs:
           name: ${{ matrix.target }}
           path: release/${{ matrix.target }}/*
           if-no-files-found: error
+          retention-days: 14
+      - name: Explain how to get this test build
+        if: always()
+        shell: bash
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+          BUILD_RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "### Creator Desk preview — $BUILD_TARGET"
+            echo ""
+            echo "Build result: **$BUILD_RESULT**."
+            echo ""
+            echo "When the build succeeds, download the **$BUILD_TARGET** artifact from the Artifacts section of this workflow run:"
+            echo ""
+            echo "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo ""
+            echo "Preview artifacts expire after 14 days; they are not published releases. The macOS builds are ad hoc signed/not notarized and Windows builds are unsigned."
+          } >> "$GITHUB_STEP_SUMMARY"
   publish:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
