@@ -16,6 +16,7 @@ import { Settings } from "./Settings";
 import { ShortsStudio } from "./ShortsStudio";
 import { Research } from "./Research";
 import { Optimize } from "./Optimize";
+import { CommentsInbox } from "./CommentsInbox";
 import { Dashboard } from "./Dashboard";
 import { Overview, type Destination } from "./Overview";
 export default function App() {
@@ -245,6 +246,8 @@ export default function App() {
               restore={() => void restore()}
               openDashboard={() => navigate("Dashboard")}
             />
+          ) : page === "Comments" ? (
+            <CommentsInbox key={selected?.id} />
           ) : page === "Optimize" ? (
             <Optimize key={selected?.id} />
           ) : page === "Research" ? (
