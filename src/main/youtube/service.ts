@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import { CoreError } from "../../shared/contracts";
 import {
   channelSnapshot,
@@ -668,21 +669,20 @@ export class YouTube {
     if (this.workspace() !== workspace || this.state().snapshot?.id !== channel)
       throw new CoreError("CANCELLED",
         "The channel changed after YouTube accepted the update. Verify directly on YouTube.");
-    const record = {
-      videoId: original.videoId, channelId: channel,
-      at: new Date().toISOString(),
-      before: { title: original.title, description: original.description, tags: original.tags },
-      after: proposed,
-      result: "verified" as const,
-    };
-    const auditKey = `youtube-metadata-audit:${workspace}`;
+    // Append-only database audit split into small rows. Database-backed backups
+    // preserve full before/after descriptions without the 10 KB setting cap.
+    const auditId = randomUUID();
+    const prefix = `youtube-metadata-audit:${workspace}:${auditId}`;
     this.store.transaction(() => {
-      const old = this.store.setting<unknown>(auditKey, []);
-      const existing = z.array(z.unknown()).max(300).safeParse(old);
-      const next = [record, ...(existing.success ? existing.data : [])].slice(0, 300);
-      this.store.db.prepare(
-        "INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-      ).run(auditKey, JSON.stringify(next));
+      const write = this.store.db.prepare("INSERT INTO settings(key,value) VALUES(?,?)");
+      write.run(`${prefix}:before`, JSON.stringify({
+        title: original.title, description: original.description, tags: original.tags,
+      }));
+      write.run(`${prefix}:after`, JSON.stringify(proposed));
+      write.run(`${prefix}:meta`, JSON.stringify({
+        videoId: original.videoId, channelId: channel,
+        at: new Date().toISOString(), result: "verified",
+      }));
     });
     return optimizationResult.parse({
       videoId: original.videoId, channelId: channel,
