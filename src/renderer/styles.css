@@ -1938,3 +1938,36 @@ dialog {
   border: 1px solid var(--line); border-radius: 8px;
   background: var(--surface); color: var(--ink); padding: 10px;
 }
+
+/* Proactive vidIQ-style optimization feed: media on the left, advice on the right. */
+.optimize-feed { display: grid; gap: 14px; margin-top: 18px; }
+.optimize-feed-card {
+  display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 18px; padding: 16px; border: 1px solid var(--line);
+  background: var(--surface); border-radius: 12px; min-width: 0;
+}
+.optimize-feed-media { min-width: 0; }
+.optimize-feed-media img, .optimize-thumbnail-placeholder {
+  display: block; width: 100%; aspect-ratio: 16 / 9;
+  object-fit: cover; border: 1px solid var(--line); border-radius: 8px;
+}
+.optimize-thumbnail-placeholder {
+  display: grid; place-items: center; padding: 12px;
+  background: var(--canvas); color: var(--muted); font-size: 13px;
+}
+.optimize-feed-media .button { width: 100%; white-space: normal; }
+.optimize-feed-advice { min-width: 0; }
+.optimize-feed-advice h3 { margin: 0 0 6px; overflow-wrap: anywhere; }
+.optimize-feed-advice li { margin: 8px 0; line-height: 1.5; }
+.optimize-feed-advice summary { cursor: pointer; font-weight: 600; margin: 12px 0; }
+.optimize-edit-fields { display: grid; gap: 12px; }
+.optimize-edit-fields label { display: grid; gap: 6px; font-weight: 600; }
+.optimize-edit-fields textarea {
+  width: 100%; min-width: 0; resize: vertical; font: inherit;
+  background: var(--canvas); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+}
+@media (max-width: 760px) {
+  .optimize-feed-card { grid-template-columns: minmax(0, 1fr); }
+  .optimize-feed-media { max-width: 300px; }
+}
