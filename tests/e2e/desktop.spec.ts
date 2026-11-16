@@ -643,6 +643,9 @@ test("synchronizes daily analytics and uploads through the protected main-proces
           throw new Error("Write must use editing permission");
         if (body.id !== "abcdefghijk" || body.snippet.categoryId !== "22")
           throw new Error("Write must preserve YouTube video category");
+        if (body.snippet.description !== "" ||
+            JSON.stringify(body.snippet.tags) !== JSON.stringify(["RV Solar", "rv solar"]))
+          throw new Error("Unapproved description or tags must not be modified");
         changedTitle = body.snippet.title;
         return Response.json({ id: "abcdefghijk" });
       }
@@ -715,10 +718,18 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await card.getByText("Edit recommendations for this video").click();
   await expect(card.getByLabel("Proposed title")).toHaveValue("Fixture upload");
   await card.getByLabel("Proposed title").fill("Fixture upload with an accurate title");
-  await card.getByRole("button", { name: "Review changes to apply" }).click();
+  await card.getByLabel("Proposed description").fill("UNAPPROVED DESCRIPTION");
+  await card.getByLabel("Proposed tags (comma-separated)").fill("UNAPPROVED TAGS");
+  await expect(card.getByRole("button", { name: "Review selected changes" })).toBeDisabled();
+  await card.getByRole("checkbox", { name: "Approve title change" }).check();
+  await expect(card.getByRole("checkbox", { name: "Approve description change" })).not.toBeChecked();
+  await expect(card.getByRole("checkbox", { name: "Approve tags change" })).not.toBeChecked();
+  await card.getByRole("button", { name: "Review selected changes" }).click();
   const approval = card.getByRole("dialog", { name: "Approve exact YouTube metadata changes" });
   await expect(approval.getByText("Before: Fixture upload")).toBeVisible();
   await expect(approval.getByText("After: Fixture upload with an accurate title")).toBeVisible();
+  await expect(approval.getByText("UNAPPROVED DESCRIPTION")).toHaveCount(0);
+  await expect(approval.getByText("UNAPPROVED TAGS")).toHaveCount(0);
   await approval.getByRole("button", { name: "Confirm and update this YouTube video" }).click();
   await expect(optimize.getByText(/YouTube confirmed and saved/)).toBeVisible();
   await expect(card.getByRole("heading", { name: "Fixture upload with an accurate title" })).toBeVisible();
