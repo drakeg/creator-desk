@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { optimizationAdvice, optimizationResult, optimizationRequest } from "../../src/shared/optimization";
+import { approvedMetadataUpdate, optimizationAdvice, optimizationResult, optimizationRequest } from "../../src/shared/optimization";
 
 const record = optimizationResult.parse({
   videoId: "abcdefghijk", channelId: "UC1234567890123456789012",
@@ -29,6 +29,17 @@ describe("owner video metadata quality advice", () => {
     expect(record.description).toBe("");
     expect(optimizationAdvice({ ...record, description: "A real summary." }).suggestedDescriptionOpening)
       .toBeNull();
+  });
+  it("prevents publishing an unfilled starter template, even after approval", () => {
+    const suggested = optimizationAdvice(record).suggestedDescriptionOpening;
+    expect(suggested).not.toBeNull();
+    const input = { original: record, approved: true as const,
+      proposed: { title: record.title, description: suggested!, tags: record.tags } };
+    expect(approvedMetadataUpdate.safeParse(input).success).toBe(false);
+    expect(approvedMetadataUpdate.safeParse({
+      ...input, proposed: { ...input.proposed,
+        description: "Our hands-on RV solar battery installation and what we learned." },
+    }).success).toBe(true);
   });
   it("warns about front-loaded links while explicitly preserving disclosures", () => {
     const result = optimizationAdvice({
