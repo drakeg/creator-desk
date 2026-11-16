@@ -99,7 +99,7 @@ export function optimizationAdvice(data: OptimizationResult): {
   // This starter uses only text the creator already supplied. It is never
   // sent to YouTube until the creator explicitly reviews and approves a draft.
   const suggestedDescriptionOpening = !data.description.trim() && title
-    ? `In this video: ${title}.\\n\\n[Add a truthful summary of what you show, then links and applicable disclosures.]`
+    ? `In this video: ${title}.\n\n[Add a truthful summary of what you show, then links and applicable disclosures.]`
     : null;
   return { tips, candidateTags, suggestedDescriptionOpening };
 }
