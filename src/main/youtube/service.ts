@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import { CoreError } from "../../shared/contracts";
 import {
   channelSnapshot,
@@ -12,6 +13,8 @@ import {
   desktopClient,
   exchange,
   ANALYTICS_SCOPE,
+  SCOPES,
+  EDIT_SCOPE,
   tokens,
   type Client,
   type Tokens,
@@ -30,10 +33,11 @@ import { dailyReport, uploadReport } from "./report-data";
 import { dailySyncInput, type DailySyncInput } from "../../shared/youtube";
 import { googleJSON, type Transport } from "./http";
 import { researchInput, searchResponse, videosResponse, combineResearchResults } from "../../shared/research";
+import { optimizationRequest, optimizationResult, approvedMetadataUpdate } from "../../shared/optimization";
 import { inboxSnapshot, readCommentInput, threadPage, parseThreads } from "../../shared/comments";
-import { optimizationRequest, optimizationResult } from "../../shared/optimization";
 const CLIENT = "youtube-client";
 const key = (id: string) => `youtube-${id}`;
+const editKey = (id: string) => `youtube-edit-${id}`;
 const cacheKey = (id: string) => `youtube-snapshot-${id}`;
 const count = z
   .string()
@@ -64,6 +68,7 @@ type Authorize = (
   open: (url: string) => Promise<void>,
   signal: AbortSignal,
   transport?: Transport,
+  scopes?: string[],
 ) => Promise<Tokens>;
 export class YouTube {
   private syncs = new Map<
@@ -79,6 +84,8 @@ export class YouTube {
   >();
   private attempts = new Map<string, AbortController>();
   private errors = new Map<string, string>();
+  private editAttempts = new Map<string, AbortController>();
+  private editErrors = new Map<string, string>();
   constructor(
     private store: Store,
     private vault: CredentialVault,
@@ -112,6 +119,9 @@ export class YouTube {
       connected: !!id && this.vault.has(key(id)),
       pending: !!id && this.attempts.has(id),
       error: id ? this.errors.get(id) || null : null,
+      editingConnected: !!id && this.vault.has(editKey(id)),
+      editingPending: !!id && this.editAttempts.has(id),
+      editingError: id ? this.editErrors.get(id) || null : null,
       snapshot: parsed.success ? parsed.data : null,
       reachSync: !!id && this.reachControllers.has(id),
       sync:
@@ -131,8 +141,8 @@ export class YouTube {
   private requireConfigurable() {
     // Keep clients with their tokens: replacing application configuration cannot silently rebind an account.
     if (
-      this.store.state().workspaces.some((w) => this.vault.has(key(w.id))) ||
-      this.attempts.size
+      this.store.state().workspaces.some((w) => this.vault.has(key(w.id)) || this.vault.has(editKey(w.id))) ||
+      this.attempts.size || this.editAttempts.size
     )
       throw new CoreError(
         "INVALID_INPUT",
@@ -193,6 +203,58 @@ export class YouTube {
       });
     return this.state();
   }
+  /** Editing permissions are separate and never needed to read recommendations.
+   * The elevated scope can also authorize deleting videos/comments: warn before prompting.
+   */
+  connectEditing() {
+    const id = this.workspace();
+    const connection = this.state();
+    if (!connection.connected || !connection.snapshot)
+      throw new CoreError("INVALID_INPUT", "Connect and sync your YouTube channel first.");
+    if (this.vault.has(editKey(id)) || this.editAttempts.has(id))
+      throw new CoreError("INVALID_INPUT", "Editing is already connected or authorization is pending.");
+    const stored = this.vault.get(key(id));
+    if (!stored)
+      throw new CoreError("INVALID_INPUT", "Read-only channel connection is required first.");
+    const account = z.object({ client: desktopClient, tokens }).parse(JSON.parse(stored));
+    const channelId = connection.snapshot.id;
+    this.vault.assertAvailable();
+    const controller = new AbortController();
+    this.editAttempts.set(id, controller);
+    this.editErrors.delete(id);
+    void this.authorize(account.client, this.open, controller.signal, this.transport,
+      [...SCOPES, EDIT_SCOPE])
+      .then(async (token) => {
+        if (controller.signal.aborted) return;
+        if (!token.scopes.includes(EDIT_SCOPE))
+          throw new CoreError("REMOTE_ERROR", "Google did not grant the requested editing permission.");
+        const result = z.object({
+          items: z.array(z.object({ id: channelSnapshot.shape.id })).max(10),
+        }).safeParse(await googleJSON(
+          "https://www.googleapis.com/youtube/v3/channels?part=id&mine=true",
+          { headers: { Authorization: `Bearer ${token.access_token}` },
+            signal: controller.signal }, this.transport,
+        ));
+        if (!result.success || result.data.items.length !== 1 ||
+            result.data.items[0]!.id !== channelId)
+          throw new CoreError("INVALID_INPUT", "The Google account granting edit access does not match this channel.");
+        if (!controller.signal.aborted && this.store.state().selectedWorkspaceId === id &&
+            this.vault.get(key(id)) === stored && this.state().snapshot?.id === channelId)
+          this.vault.set(editKey(id), JSON.stringify({
+            client: account.client, tokens: token, channelId,
+          }));
+      })
+      .catch(error => {
+        if (!controller.signal.aborted)
+          this.editErrors.set(id, error instanceof CoreError ? error.message :
+            "Editing permission could not be granted. Your read-only connection is unchanged.");
+      })
+      .finally(() => {
+        if (this.editAttempts.get(id) === controller) this.editAttempts.delete(id);
+      });
+    return this.state();
+  }
+
   cancelAll() {
     for (const controller of this.retentionControllers.values()) controller.abort();
     this.retentionControllers.clear();
@@ -204,7 +266,10 @@ export class YouTube {
     this.syncs.clear();
     for (const controller of this.attempts.values()) controller.abort();
     this.attempts.clear();
+    for (const controller of this.editAttempts.values()) controller.abort();
+    this.editAttempts.clear();
     this.errors.clear();
+    this.editErrors.clear();
   }
   cancel() {
     const id = this.workspace();
@@ -219,6 +284,10 @@ export class YouTube {
     this.syncs.get(id)?.controller.abort();
     this.reachControllers.get(id)?.abort();
     this.retentionControllers.get(id)?.abort();
+    this.editAttempts.get(id)?.abort();
+    this.editAttempts.delete(id);
+    this.editErrors.delete(id);
+    this.vault.delete(editKey(id));
     this.vault.delete(key(id));
     this.store.transaction(() =>
       this.store.db
@@ -482,6 +551,144 @@ export class YouTube {
       videoId, channelId: snippet.channelId, title: snippet.title,
       description: snippet.description, tags: snippet.tags ?? [],
       fetchedAt: new Date().toISOString(),
+    });
+  }
+  private async editingAccess(id: string, expectedChannel: string) {
+    const stored = this.vault.get(editKey(id));
+    if (!stored)
+      throw new CoreError("INVALID_INPUT", "Grant YouTube editing permission before applying an approved change.");
+    const account = z.object({
+      client: desktopClient, tokens, channelId: channelSnapshot.shape.id,
+    }).parse(JSON.parse(stored));
+    if (account.channelId !== expectedChannel || !account.tokens.scopes.includes(EDIT_SCOPE))
+      throw new CoreError("INVALID_INPUT", "Editing permission does not belong to this channel.");
+    let token = account.tokens;
+    if (token.expiresAt <= Date.now() + 60000) {
+      token = await exchange(account.client, {
+        grant_type: "refresh_token", refresh_token: token.refresh_token,
+      }, new AbortController().signal, this.transport, token.scopes);
+      if (this.vault.get(editKey(id)) !== stored)
+        throw new CoreError("CANCELLED", "Editing authorization changed. No update was submitted.");
+      this.vault.set(editKey(id), JSON.stringify({ ...account, tokens: token }));
+    }
+    if (!token.scopes.includes(EDIT_SCOPE))
+      throw new CoreError("INVALID_INPUT", "Editing permission was not granted.");
+    return token.access_token;
+  }
+
+  /** Only exact, approved edits for videos belonging to the current channel.
+   * No implicit retries after an uncertain write.
+   */
+  async applyApprovedMetadata(input: unknown) {
+    const approval = approvedMetadataUpdate.parse(input);
+    const workspace = this.workspace();
+    const channel = this.state().snapshot?.id;
+    if (!channel || !this.state().connected || approval.original.channelId !== channel)
+      throw new CoreError("INVALID_INPUT", "Approved changes do not belong to the connected channel.");
+    const history = this.history();
+    if (!history || history.channelId !== channel ||
+        !history.uploads?.rows.some(v => v.id === approval.original.videoId))
+      throw new CoreError("INVALID_INPUT", "This video is not in your connected channel's uploads.");
+    const bearer = await this.editingAccess(workspace, channel);
+    const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+    url.search = new URLSearchParams({
+      part: "snippet", id: approval.original.videoId,
+    }).toString();
+    const responseSchema = z.object({
+      items: z.array(z.object({
+        id: optimizationRequest.shape.videoId,
+        snippet: z.object({
+          channelId: channelSnapshot.shape.id,
+          title: z.string().min(1).max(100),
+          description: z.string().max(5000),
+          tags: z.array(z.string().min(1).max(500)).max(500).optional(),
+          categoryId: z.string().regex(/^[0-9]+$/),
+          defaultLanguage: z.string().max(35).optional(),
+          defaultAudioLanguage: z.string().max(35).optional(),
+        }),
+      })).max(1),
+    });
+    const fresh = responseSchema.safeParse(await googleJSON(url.href,
+      { headers: { Authorization: `Bearer ${bearer}` } }, this.transport));
+    const original = approval.original;
+    if (!fresh.success || fresh.data.items.length !== 1 ||
+        fresh.data.items[0]!.id !== original.videoId ||
+        fresh.data.items[0]!.snippet.channelId !== channel)
+      throw new CoreError("REMOTE_ERROR", "The current owned video metadata could not be verified. No changes were sent.");
+    const snippet = fresh.data.items[0]!.snippet;
+    if (snippet.title !== original.title ||
+        snippet.description !== original.description ||
+        JSON.stringify(snippet.tags ?? []) !== JSON.stringify(original.tags))
+      throw new CoreError("INVALID_INPUT", "The video has changed since these recommendations loaded. Refresh before applying edits.");
+    if (this.workspace() !== workspace || !this.state().connected ||
+        this.state().snapshot?.id !== channel)
+      throw new CoreError("CANCELLED", "Channel changed. No edits were sent.");
+    const proposed = approval.proposed;
+    const safeBody = {
+      id: original.videoId,
+      snippet: {
+        title: proposed.title,
+        description: proposed.description,
+        tags: proposed.tags,
+        categoryId: snippet.categoryId,
+        ...(snippet.defaultLanguage ? { defaultLanguage: snippet.defaultLanguage } : {}),
+        ...(snippet.defaultAudioLanguage ? { defaultAudioLanguage: snippet.defaultAudioLanguage } : {}),
+      },
+    };
+    // A single write. Never silently replay an uncertain PUT.
+    try {
+      const result = await googleJSON(
+        "https://www.googleapis.com/youtube/v3/videos?part=snippet",
+        { method: "PUT", headers: {
+          Authorization: `Bearer ${bearer}`, "Content-Type": "application/json",
+        }, body: JSON.stringify(safeBody) }, this.transport,
+      );
+      const accepted = z.object({ id: optimizationRequest.shape.videoId }).safeParse(result);
+      if (!accepted.success || accepted.data.id !== original.videoId)
+        throw new Error("Uncertain update response");
+    } catch {
+      throw new CoreError("REMOTE_ERROR",
+        "The update could not be confirmed. Check the video on YouTube before trying again; Creator Desk will not automatically retry.");
+    }
+    let verification;
+    try {
+      verification = responseSchema.parse(await googleJSON(url.href, {
+        headers: { Authorization: `Bearer ${bearer}` },
+      }, this.transport));
+    } catch {
+      throw new CoreError("REMOTE_ERROR",
+        "YouTube accepted the request but readback failed. Check the video directly before making another edit.");
+    }
+    const confirmed = verification.items[0];
+    if (!confirmed || confirmed.id !== original.videoId ||
+        confirmed.snippet.channelId !== channel ||
+        confirmed.snippet.title !== proposed.title ||
+        confirmed.snippet.description !== proposed.description ||
+        JSON.stringify(confirmed.snippet.tags ?? []) !== JSON.stringify(proposed.tags))
+      throw new CoreError("REMOTE_ERROR",
+        "YouTube's returned metadata does not match the approved changes. Inspect the video before retrying.");
+    if (this.workspace() !== workspace || this.state().snapshot?.id !== channel)
+      throw new CoreError("CANCELLED",
+        "The channel changed after YouTube accepted the update. Verify directly on YouTube.");
+    // Append-only database audit split into small rows. Database-backed backups
+    // preserve full before/after descriptions without the 10 KB setting cap.
+    const auditId = randomUUID();
+    const prefix = `youtube-metadata-audit:${workspace}:${auditId}`;
+    this.store.transaction(() => {
+      const write = this.store.db.prepare("INSERT INTO settings(key,value) VALUES(?,?)");
+      write.run(`${prefix}:before`, JSON.stringify({
+        title: original.title, description: original.description, tags: original.tags,
+      }));
+      write.run(`${prefix}:after`, JSON.stringify(proposed));
+      write.run(`${prefix}:meta`, JSON.stringify({
+        videoId: original.videoId, channelId: channel,
+        at: new Date().toISOString(), result: "verified",
+      }));
+    });
+    return optimizationResult.parse({
+      videoId: original.videoId, channelId: channel,
+      title: confirmed.snippet.title, description: confirmed.snippet.description,
+      tags: confirmed.snippet.tags ?? [], fetchedAt: new Date().toISOString(),
     });
   }
   private commentsKey(id: string) { return `comments-inbox:${id}`; }
