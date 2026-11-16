@@ -1,33 +1,34 @@
-Creator Desk 0.14.0 — First vidIQ-replacement features to test
+Creator Desk 0.15.0 — Comments and proactive YouTube optimization
 
-This release packages the already-merged creator-focused Research and Optimize features. It does not yet replace all paid vidIQ capabilities.
+New: Automatic vidIQ-style Optimize feed
+- For a connected channel, Creator Desk opens Optimize on launch instead of making you choose a video or request an analysis.
+- The latest eight synced uploads receive individually loaded, factual rule-based quality suggestions. Each card puts the channel's video thumbnail on the left and the recommendations on the right.
+- Advice currently covers title clarity, empty/short descriptions, repeated tags and candidate phrases from the title. It does not claim search-volume scores, guaranteed ranking improvements or AI-generated alternatives.
+- Per-video editable drafts, review and refresh are available. Thumbnails may be unavailable if the YouTube image service cannot be reached.
 
-New: Topic Research
-- Open **Research** to search actual public YouTube videos by topic or keyword. Review titles, creator/channel names, publishing dates, and current cumulative view counts when available, with direct source links.
-- Research requires an authorized YouTube connection. Search is deliberately user-triggered and capped at 20 searches per workspace per UTC day; each request returns up to 10 videos. No fabricated keyword volume, proprietary scores or growth predictions.
-- Research results are for competitive discovery only and cannot be used as sources for Shorts.
+New: Explicitly approved YouTube metadata updates (advanced testing)
+- You may separately enable Google YouTube editing permission and apply exact reviewed title, description and tag changes to a video belonging to the connected channel.
+- Every update is preceded by an exact before/after confirmation and a fresh ownership/metadata check. The app sends a single update, reads the result back and records verified changes in a local audit trail.
+- Google grants the broad `youtube.force-ssl` permission, which can also authorize video/comment deletion. Creator Desk uses this privilege for individually approved metadata changes; it is not an edit-only Google scope. Declining permission leaves read-only analysis available.
+- The app does not auto-publish recommendations, perform bulk edits, retry uncertain updates, or change privacy settings. Treat the first live-channel edit as an explicitly authorized acceptance test on a suitable owned video, not a proven production deployment.
+- See docs/YOUTUBE-EDITING.md before enabling editing.
 
-New: Video Optimize
-- Open **Optimize** and select one of the connected channel's own uploads to review its current title, description and tags.
-- Receive transparent, local rule-based guidance for title clarity, missing/short descriptions and duplicate tags; review candidate phrases found in the existing title.
-- Edit title, description and tag drafts, then copy the reviewed draft for manual application. This version does not publish metadata changes or automatically generate AI-backed alternatives.
-- Only videos from the authenticated channel's synced upload library are eligible.
+New: Recent comments inbox
+- Read the connected channel's latest comment threads with manual refresh and new/updated, needs-response, replied and unknown-replies filters.
+- Mark a comment reviewed locally. A conservative unknown status is displayed when YouTube did not return enough replies to establish whether the channel responded.
+- The snapshot is bounded at two pages (up to 100 threads). This release does not post replies or guarantee coverage of older threads.
 
-Improved: Owned-video Shorts workflow
-- Open **Studio** to choose your own uploaded video by title from the connected channel, or choose a local video as before.
-- Selecting a YouTube upload does not download media. To edit it, select an authorized local copy of that video. This is an interim handoff, not direct YouTube-video processing. No public or competitor videos are made available as Shorts source material.
+Updated runtime/dependencies
+- Electron 45.3.3 and typescript-eslint 8.73.0 updates are merged.
+- Existing Research, Shorts local-media workflow, Analytics, Reach, Retention and offline workspace tools remain present.
 
-Existing features
-- Retention and Reach analytics, offline workspace data, and the YouTube changes register remain available.
-- The complete Mad Mallards YouTube Watch automation/reporting sync is not yet included in this desktop release.
+Still planned
+- Richer recommendations grounded in actual video contents and audience needs rather than simple metadata checks.
+- Full comment pagination, reply authoring/review, richer saved drafts and competitor/outlier research.
+- Direct own-upload media editing without needing to select an authorized local copy.
 
-Upcoming — not included in v0.14.0
-- Updated/unanswered comments inbox and optional reply workflow
-- Advanced context-aware title, description and tag recommendations with explicit AI consent
-- Competitor/outlier analytics and saved idea planning
-- True direct-from-own-YouTube-video Shorts editing, subject to permitted media access
-
-Testing and package security
-- Native CI builds and installed-app checks cover macOS Apple Silicon, macOS Intel, Windows x64 and Debian/Ubuntu Linux x64. Verify all four build jobs, published artifacts and SHA-256 checksums before marking the release done.
-- macOS is ad hoc signed but not notarized, and Windows builds are unsigned. A build that has not completed CI is not a verified installer.
-- Test with the connected channel you own; AI models and third-party paid services are not required for the new rule-based recommendations.
+Test and distribution
+- Four-platform CI covers macOS ARM64, macOS Intel, Windows x64 and Debian/Ubuntu Linux x64. Verify installed-app checks, checksums and release assets before calling v0.15.0 published.
+- macOS remains unnotarized (ad hoc signed); Windows remains unsigned.
+- The new write-back functionality was exercised with synthetic Google API fixtures in CI and needs explicit real-owner acceptance before reliance on a live channel. Keep backups before first-time testing.
+- Feature PR builds are available as short-lived artifacts so future patch/minor releases need not wait for a full sprint.
