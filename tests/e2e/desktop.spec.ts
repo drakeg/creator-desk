@@ -926,9 +926,16 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await page.screenshot({ path: "test-results/reach-dark-compact.png" });
   await app.close();
   await launch();
-  await expect(
-    page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
-  ).toBeVisible();
+  // Returning users start on the proactive Optimize tab. Open Dashboard
+  // deliberately before asserting the persisted channel video library.
+  const restoredHistory = await page.evaluate(() => window.desktop.getChannelHistory());
+  expect(restoredHistory.ok).toBe(true);
+  if (!restoredHistory.ok) throw new Error("Restored channel history unavailable");
+  expect(restoredHistory.value?.uploads?.rows.some((video) => video.id === "abcdefghijk")).toBe(true);
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  const restoredLibrary = page.getByRole("region", { name: "Channel video library" });
+  await expect(restoredLibrary.getByText("Fixture upload", { exact: true })).toBeVisible();
+  await expect(restoredLibrary.locator(".video-id")).toHaveText("abcdefghijk");
   await expect(
     page.getByRole("button", { name: "Sync channel history", exact: true }),
   ).toBeEnabled();
