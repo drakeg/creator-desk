@@ -525,6 +525,15 @@ test("synchronizes daily analytics and uploads through the protected main-proces
           scopes,
         },
       }),
+      [`youtube-edit-${id}`]: encode({
+        client, channelId: "UC1234567890123456789012",
+        tokens: {
+          access_token: "fixture-editor",
+          refresh_token: "fixture-editor-refresh",
+          expiresAt: Date.now() + 3600000,
+          scopes: [...scopes, "https://www.googleapis.com/auth/youtube.force-ssl"],
+        },
+      }),
     }),
   );
   await app.evaluate(({ safeStorage }) => {
@@ -533,7 +542,8 @@ test("synchronizes daily analytics and uploads through the protected main-proces
     safeStorage.getSelectedStorageBackend = () => "gnome_libsecret";
     safeStorage.decryptString = (value) => value.toString();
     safeStorage.encryptString = (value) => Buffer.from(value);
-    globalThis.fetch = async (raw) => {
+    let changedTitle = "Fixture upload";
+    globalThis.fetch = async (raw, init) => {
       const url = new URL(String(raw));
       const channel = "UC1234567890123456789012";
       if (url.hostname === "youtubeanalytics.googleapis.com" &&
@@ -627,11 +637,20 @@ test("synchronizes daily analytics and uploads through the protected main-proces
             },
           }],
         });
+      if (url.pathname.endsWith("/videos") && init?.method === "PUT") {
+        const body = JSON.parse(String(init.body));
+        if (init.headers && (init.headers as Record<string, string>).Authorization !== "Bearer fixture-editor")
+          throw new Error("Write must use editing permission");
+        if (body.id !== "abcdefghijk" || body.snippet.categoryId !== "22")
+          throw new Error("Write must preserve YouTube video category");
+        changedTitle = body.snippet.title;
+        return Response.json({ id: "abcdefghijk" });
+      }
       if (url.pathname.endsWith("/videos") && url.searchParams.get("part") === "snippet")
         return Response.json({ items: [{
           id: "abcdefghijk",
           snippet: {
-            channelId: channel, title: "Fixture upload",
+            channelId: channel, title: changedTitle, categoryId: "22",
             description: "", tags: ["RV Solar", "rv solar"],
           },
         }] });
@@ -672,9 +691,12 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   if (!cache.ok || !cache.value) throw new Error("History missing");
   expect(cache.value.daily?.rows).toHaveLength(2);
   expect(cache.value.uploads?.rows).toHaveLength(1);
-  await expect(
-    page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
-  ).toBeVisible();
+  // Startup can retain a different analytics sub-tab; explicitly open the
+  // connected-channel library before asserting its table contents.
+  await page.getByRole("button", { name: "Connected channel", exact: true }).click();
+  const videoLibrary = page.getByRole("region", { name: "Channel video library" });
+  await expect(videoLibrary.getByText("Fixture upload", { exact: true })).toBeVisible();
+  await expect(videoLibrary.locator(".video-id")).toHaveText("abcdefghijk");
   // vidIQ-alternative Research must provide real public metadata, not a placeholder.
   await page.getByRole("button", { name: "Research", exact: true }).click();
   const research = page.getByRole("region", { name: "Video topic research" });
@@ -693,6 +715,13 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await card.getByText("Edit recommendations for this video").click();
   await expect(card.getByLabel("Proposed title")).toHaveValue("Fixture upload");
   await card.getByLabel("Proposed title").fill("Fixture upload with an accurate title");
+  await card.getByRole("button", { name: "Review changes to apply" }).click();
+  const approval = card.getByRole("dialog", { name: "Approve exact YouTube metadata changes" });
+  await expect(approval.getByText("Before: Fixture upload")).toBeVisible();
+  await expect(approval.getByText("After: Fixture upload with an accurate title")).toBeVisible();
+  await approval.getByRole("button", { name: "Confirm and update this YouTube video" }).click();
+  await expect(optimize.getByText(/YouTube confirmed and saved/)).toBeVisible();
+  await expect(card.getByRole("heading", { name: "Fixture upload with an accurate title" })).toBeVisible();
   await page.getByRole("button", { name: "Comments", exact: true }).click();
   const inbox = page.getByRole("region", { name: "Channel comments inbox" });
   await inbox.getByRole("button", { name: "Refresh comments" }).click();
@@ -926,9 +955,16 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await page.screenshot({ path: "test-results/reach-dark-compact.png" });
   await app.close();
   await launch();
-  await expect(
-    page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
-  ).toBeVisible();
+  // Returning users start on the proactive Optimize tab. Open Dashboard
+  // deliberately before asserting the persisted channel video library.
+  const restoredHistory = await page.evaluate(() => window.desktop.getChannelHistory());
+  expect(restoredHistory.ok).toBe(true);
+  if (!restoredHistory.ok) throw new Error("Restored channel history unavailable");
+  expect(restoredHistory.value?.uploads?.rows.some((video) => video.id === "abcdefghijk")).toBe(true);
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  const restoredLibrary = page.getByRole("region", { name: "Channel video library" });
+  await expect(restoredLibrary.getByText("Fixture upload", { exact: true })).toBeVisible();
+  await expect(restoredLibrary.locator(".video-id")).toHaveText("abcdefghijk");
   await expect(
     page.getByRole("button", { name: "Sync channel history", exact: true }),
   ).toBeEnabled();

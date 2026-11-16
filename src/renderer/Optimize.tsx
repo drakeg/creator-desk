@@ -18,6 +18,9 @@ export function Optimize() {
   const [refreshing, setRefreshing] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [editor, setEditor] = useState<YouTubeState | null>(null);
+  const [confirmId, setConfirmId] = useState("");
+  const [applying, setApplying] = useState("");
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -28,6 +31,7 @@ export function Optimize() {
           window.desktop.getYouTube(), window.desktop.getChannelHistory(),
         ]);
         if (!active) return;
+        if (connection.ok) setEditor(connection.value);
         if (!connection.ok || !history.ok) {
           setError("Your YouTube channel history could not be loaded.");
           return;
@@ -64,6 +68,49 @@ export function Optimize() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (!editor?.editingPending) return;
+    let active = true;
+    const timer = setInterval(() => {
+      void window.desktop.getYouTube().then(result => {
+        if (active && result.ok) setEditor(result.value);
+      }).catch(() => {});
+    }, 900);
+    return () => { active = false; clearInterval(timer); };
+  }, [editor?.editingPending]);
+
+  async function grantEditing() {
+    setError("");
+    try {
+      const result = await window.desktop.enableYouTubeEditing();
+      if (result.ok) setEditor(result.value);
+      else setError(result.error.message);
+    } catch {
+      setError("Could not start Google editing authorization.");
+    }
+  }
+  const proposals = (videoId: string) => {
+    const draft = drafts[videoId];
+    if (!draft) return null;
+    return { title: draft.title.trim(), description: draft.description,
+      tags: draft.tags.split(",").map(t => t.trim()).filter(Boolean) };
+  };
+  async function apply(video: OptimizationResult) {
+    const proposed = proposals(video.videoId);
+    if (!proposed || !editor?.editingConnected) return;
+    setApplying(video.videoId); setError(""); setNotice("");
+    try {
+      const response = await window.desktop.applyApprovedMetadata({
+        original: video, proposed, approved: true,
+      });
+      if (!response.ok) { setError(response.error.message); return; }
+      setVideos(current => current.map(v => v.videoId === video.videoId ? response.value : v));
+      setDrafts(current => ({ ...current, [video.videoId]: draftOf(response.value) }));
+      setNotice(`YouTube confirmed and saved the approved changes to "${response.value.title}".`);
+    } catch {
+      setError("Update result is uncertain. Check the video on YouTube before retrying.");
+    } finally { setConfirmId(""); setApplying(""); }
+  }
   async function refresh(videoId: string) {
     setRefreshing(videoId);
     setError("");
@@ -88,6 +135,19 @@ export function Optimize() {
         practical recommendations; expand any video to refine a draft. No changes are sent to YouTube
         without a separate approval and write-permission workflow.</p>
     </div>
+    <section className="optimize-editor-permission" aria-label="YouTube editing permissions">
+      {editor?.editingConnected ? <p role="status">Editing permission connected. Changes still require your explicit approval.</p> :
+        <div>
+          <p><strong>Apply approved changes directly to YouTube.</strong> Viewing recommendations does not require editing access.</p>
+          <p className="field-note">Google's YouTube editing permission is broad: it can also authorize deleting content and modifying comments. Creator Desk will only use it for a change you explicitly approve.</p>
+          <button type="button" className="button secondary"
+            disabled={!editor?.connected || editor?.editingPending}
+            onClick={() => void grantEditing()}>
+            {editor?.editingPending ? "Authorizing with Google…" : "Enable approved YouTube updates"}
+          </button>
+          {editor?.editingError && <p className="alert" role="alert">{editor.editingError}</p>}
+        </div>}
+    </section>
     {loading && <p role="status">Checking your own videos and preparing recommendations…</p>}
     {!loading && !count && <p className="field-note">Connect your YouTube channel and sync uploads in Dashboard
       to receive automatic recommendations. Public and competitor videos are excluded.</p>}
@@ -142,8 +202,37 @@ export function Optimize() {
                   ).then(() => setNotice("Reviewed draft copied."))
                     .catch(() => setError("Could not copy this draft."));
                 }}>Copy edited draft</button>
-                <p className="field-note">Applying approved edits directly to YouTube is the next
-                  planned step. It will request write permission and confirm the exact changes.</p>
+                <button type="button" className="button primary"
+                  disabled={!editor?.editingConnected || !!applying || !proposals(video.videoId) ||
+                    (draft.title.trim() === video.title && draft.description === video.description &&
+                      draft.tags === video.tags.join(", "))}
+                  onClick={() => setConfirmId(video.videoId)}>Review changes to apply</button>
+                {!editor?.editingConnected && <p className="field-note">Enable editing permission above to apply approved changes. Drafts can still be copied without it.</p>}
+                {confirmId === video.videoId && <section className="optimize-approval"
+                  role="dialog" aria-label="Approve exact YouTube metadata changes">
+                  <h4>Approve edits to {video.title}</h4>
+                  <p>Video ID: {video.videoId}. Only the fields shown below will change.</p>
+                  {draft.title.trim() !== video.title && <div>
+                    <strong>Title</strong><p>Before: {video.title}</p><p>After: {draft.title.trim()}</p>
+                  </div>}
+                  {draft.description !== video.description && <div>
+                    <strong>Description</strong><p>Before: {video.description || "(empty)"}</p>
+                    <p>After: {draft.description || "(empty)"}</p>
+                  </div>}
+                  {draft.tags !== video.tags.join(", ") && <div>
+                    <strong>Tags</strong><p>Before: {video.tags.join(", ") || "(none)"}</p>
+                    <p>After: {draft.tags || "(none)"}</p>
+                  </div>}
+                  <p className="field-note">Creator Desk will re-fetch the current video first. If its metadata changed, the update will stop. An uncertain request will not be automatically retried.</p>
+                  <div className="youtube-actions">
+                    <button className="button secondary" disabled={!!applying}
+                      onClick={() => setConfirmId("")}>Cancel</button>
+                    <button className="button primary" disabled={!!applying}
+                      onClick={() => void apply(video)}>
+                      {applying ? "Verifying YouTube changes…" : "Confirm and update this YouTube video"}
+                    </button>
+                  </div>
+                </section>}
               </div>}
             </details>
           </div>
