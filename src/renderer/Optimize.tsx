@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { OptimizationResult } from "../shared/optimization";
-import { optimizationAdvice } from "../shared/optimization";
+import type { OptimizationResult, OptimizationField, ApprovedMetadataUpdate } from "../shared/optimization";
+import { optimizationAdvice, selectedMetadata } from "../shared/optimization";
 import { ownedShortsUploads } from "../shared/owned-shorts";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 
@@ -19,7 +19,8 @@ export function Optimize() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [editor, setEditor] = useState<YouTubeState | null>(null);
-  const [confirmId, setConfirmId] = useState("");
+  const [selectedFields, setSelectedFields] = useState<Record<string, OptimizationField[]>>({});
+  const [pendingApproval, setPendingApproval] = useState<ApprovedMetadataUpdate | null>(null);
   const [applying, setApplying] = useState("");
   const [count, setCount] = useState(0);
 
@@ -89,27 +90,56 @@ export function Optimize() {
       setError("Could not start Google editing authorization.");
     }
   }
-  const proposals = (videoId: string) => {
-    const draft = drafts[videoId];
+  const proposals = (video: OptimizationResult) => {
+    const draft = drafts[video.videoId];
     if (!draft) return null;
-    return { title: draft.title.trim(), description: draft.description,
-      tags: draft.tags.split(",").map(t => t.trim()).filter(Boolean) };
+    const tags = draft.tags.split(",").map(t => t.trim()).filter(Boolean);
+    const fields = selectedFields[video.videoId] ?? [];
+    const proposed = selectedMetadata(video, {
+      title: draft.title, description: draft.description, tags,
+    }, fields);
+    return { proposed, approvedFields: fields };
   };
+  function toggleApproval(videoId: string, field: OptimizationField, checked: boolean) {
+    setSelectedFields(current => {
+      const fields = current[videoId] ?? [];
+      return { ...current, [videoId]: checked
+        ? [...fields.filter(item => item !== field), field]
+        : fields.filter(item => item !== field) };
+    });
+    setPendingApproval(null);
+  }
+  function review(video: OptimizationResult) {
+    const selection = proposals(video);
+    if (!selection || !selection.approvedFields.length) return;
+    const { proposed, approvedFields } = selection;
+    const changed = approvedFields.some(field => field === "tags"
+      ? JSON.stringify(proposed.tags) !== JSON.stringify(video.tags)
+      : proposed[field] !== video[field]);
+    if (!changed) {
+      setError("Select at least one field with an actual change.");
+      return;
+    }
+    setError("");
+    // Freeze the reviewed values; later text edits can't silently modify approval.
+    setPendingApproval({
+      original: video, proposed, approvedFields: [...approvedFields], approved: true,
+    });
+  }
   async function apply(video: OptimizationResult) {
-    const proposed = proposals(video.videoId);
-    if (!proposed || !editor?.editingConnected) return;
+    const approval = pendingApproval;
+    if (!approval || approval.original.videoId !== video.videoId || !editor?.editingConnected) return;
     setApplying(video.videoId); setError(""); setNotice("");
     try {
-      const response = await window.desktop.applyApprovedMetadata({
-        original: video, proposed, approved: true,
-      });
+      const response = await window.desktop.applyApprovedMetadata(approval);
       if (!response.ok) { setError(response.error.message); return; }
       setVideos(current => current.map(v => v.videoId === video.videoId ? response.value : v));
       setDrafts(current => ({ ...current, [video.videoId]: draftOf(response.value) }));
+      setSelectedFields(current => ({ ...current, [video.videoId]: [] }));
       setNotice(`YouTube confirmed and saved the approved changes to "${response.value.title}".`);
     } catch {
       setError("Update result is uncertain. Check the video on YouTube before retrying.");
-    } finally { setConfirmId(""); setApplying(""); }
+    } finally { setPendingApproval(null); setApplying(""); }
   }
   async function refresh(videoId: string) {
     setRefreshing(videoId);
@@ -119,11 +149,14 @@ export function Optimize() {
       if (!result.ok) { setError(result.error.message); return; }
       setVideos(current => current.map(item => item.videoId === videoId ? result.value : item));
       setDrafts(current => ({ ...current, [videoId]: draftOf(result.value) }));
+      setSelectedFields(current => ({ ...current, [videoId]: [] }));
+      setPendingApproval(null);
     } catch {
       setError("Could not refresh this video. Its existing recommendations remain visible.");
     } finally { setRefreshing(""); }
   }
   function edit(videoId: string, key: keyof Draft, value: string) {
+    setPendingApproval(null);
     setDrafts(current => ({
       ...current, [videoId]: { ...current[videoId]!, [key]: value },
     }));
