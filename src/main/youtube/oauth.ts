@@ -7,6 +7,8 @@ export const SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 export const ANALYTICS_SCOPE =
   "https://www.googleapis.com/auth/yt-analytics.readonly";
 export const SCOPES = [SCOPE, ANALYTICS_SCOPE];
+/** Explicit optional scope; Google also permits deletion with this powerful grant. */
+export const EDIT_SCOPE = "https://www.googleapis.com/auth/youtube.force-ssl";
 export const desktopClient = z.object({
   client_id: z
     .string()
@@ -77,6 +79,7 @@ export async function authorize(
   open: (url: string) => Promise<void>,
   signal: AbortSignal,
   transport?: Transport,
+  requestedScopes: string[] = SCOPES,
 ): Promise<Tokens> {
   if (signal.aborted) throw new CoreError("CANCELLED", "Connection cancelled.");
   const verifier = randomBytes(32).toString("base64url");
@@ -163,7 +166,7 @@ export async function authorize(
       client_id: client.client_id,
       redirect_uri: redirect,
       response_type: "code",
-      scope: SCOPES.join(" "),
+      scope: requestedScopes.join(" "),
       state,
       code_challenge: challenge,
       code_challenge_method: "S256",
@@ -183,12 +186,12 @@ export async function authorize(
       },
       signal,
       transport,
-      SCOPES,
+      requestedScopes,
     );
-    if (!SCOPES.every((scope) => result.scopes.includes(scope)))
+    if (!requestedScopes.every((scope) => result.scopes.includes(scope)))
       throw new CoreError(
         "REMOTE_ERROR",
-        "Grant both read-only YouTube and Analytics permissions when reconnecting.",
+        "Google did not grant the requested YouTube permissions.",
       );
     return result;
   } finally {

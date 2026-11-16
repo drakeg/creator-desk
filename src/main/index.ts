@@ -28,7 +28,7 @@ import { saveChange, changeId, officialYouTubeSource } from "../shared/youtube-c
 import { YouTubeChanges } from "./youtube/change-tracker";
 import { dailySyncInput } from "../shared/youtube";
 import { researchInput } from "../shared/research";
-import { optimizationRequest } from "../shared/optimization";
+import { optimizationRequest, approvedMetadataUpdate } from "../shared/optimization";
 import { readCommentInput } from "../shared/comments";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
@@ -166,6 +166,8 @@ function configureIPC() {
     await shell.openExternal("https://studio.youtube.com/");
     return null;
   });
+  handle("enableYouTubeEditing", z.undefined(), () => youtube.connectEditing());
+  handle("applyApprovedMetadata", approvedMetadataUpdate, (input) => youtube.applyApprovedMetadata(input));
   handle("getOwnVideoThumbnail", optimizationRequest, (input) => youtube.ownVideoThumbnail(input));
   handle("optimizeVideo", optimizationRequest, (input) => youtube.optimizeVideo(input));
   handle("getCommentsInbox", z.undefined(), () => youtube.commentsInbox());
