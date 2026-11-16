@@ -1,12 +1,12 @@
-# Creator Desk 0.14.0 (development)
+# Creator Desk 0.15.0 (development)
 
-An installable desktop app for synchronizing YouTube channel history, importing supplemental analytics, and creating Shorts. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research and Optimize tools are available; competitor intelligence and the comments inbox are in development.
+An installable desktop app for synchronizing YouTube channel history, importing supplemental analytics, and creating Shorts. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research, proactive Optimize, and a read-only comments inbox are available. Individually approved YouTube title/description/tag updates are supported behind optional Google editing permission; competitor intelligence remains in development.
 
 ## Try new features sooner
 
 Each feature PR produces macOS, Windows and Linux installer artifacts in its GitHub Actions **Desktop releases** run. Download a successful platform build from the run's **Artifacts** section without waiting for the next formal version bump; see [how to test PR builds](docs/TEST-BUILDS.md). Preview artifacts are retained for 14 days. PR builds may not include publisher-managed Google OAuth configuration.
 
-The current Creator Desk GUI includes **Research** (real topic/video discovery) and **Optimize** (read-only recommendations for your channel's title, description and tags). The updated/unanswered comments inbox, deeper AI recommendations and competitor/outlier tools remain in the Agile backlog.
+The current GUI includes **Research** (real topic discovery), **Optimize** (automatic thumbnail-first recommendations for your own uploads, plus individually approved YouTube metadata edits when separately authorized), and **Comments** (read-only recent/unanswered comment triage). See [Google editing permission and review safeguards](docs/YOUTUBE-EDITING.md) before enabling video writes. Deeper AI-backed recommendations, replies, full-history comment paging and competitor/outlier tools remain in the backlog.
 
 ## Create Shorts
 
