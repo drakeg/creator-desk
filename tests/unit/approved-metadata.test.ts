@@ -119,6 +119,31 @@ describe("explicit YouTube metadata updates", () => {
     }).success).toBe(false);
   });
 
+  it("keeps the title and tags intact when approving a description only", () => {
+    const effective = selectedMetadata(original, {
+      title: "Unapproved title", description: "Owner-reviewed description.",
+      tags: ["Unapproved tags"],
+    }, ["description"]);
+    expect(effective).toEqual({
+      title: original.title, description: "Owner-reviewed description.", tags: original.tags,
+    });
+    expect(approvedMetadataUpdate.safeParse({
+      original, proposed: effective, approvedFields: ["description"], approved: true,
+    }).success).toBe(true);
+  });
+  it("keeps title and description intact when approving only tags", () => {
+    const effective = selectedMetadata(original, {
+      title: "Unapproved title", description: "Unapproved description",
+      tags: ["RV solar", "battery demo"],
+    }, ["tags"]);
+    expect(effective).toEqual({
+      title: original.title, description: original.description, tags: ["RV solar", "battery demo"],
+    });
+    expect(approvedMetadataUpdate.safeParse({
+      original, proposed: effective, approvedFields: ["tags"], approved: true,
+    }).success).toBe(true);
+  });
+
   it("preserves description and tags when approving title alone on the wire", async () => {
     let current = { ...initial, tags: [...initial.tags] };
     let writes = 0;
