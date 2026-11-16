@@ -190,6 +190,12 @@ export function Optimize() {
       {videos.map(video => {
         const advice = optimizationAdvice(video);
         const draft = drafts[video.videoId];
+        const selected = proposals(video);
+        const hasSelectedChanges = !!selected && selected.approvedFields.some(field =>
+          field === "tags" ? JSON.stringify(selected.proposed.tags) !== JSON.stringify(video.tags)
+            : selected.proposed[field] !== video[field]);
+        const approval = pendingApproval?.original.videoId === video.videoId
+          ? pendingApproval : null;
         return <article className="optimize-feed-card" key={video.videoId}>
           <div className="optimize-feed-media">
             {thumbnails[video.videoId] ?
@@ -235,31 +241,48 @@ export function Optimize() {
                   ).then(() => setNotice("Reviewed draft copied."))
                     .catch(() => setError("Could not copy this draft."));
                 }}>Copy edited draft</button>
+                <fieldset className="optimize-field-selection" disabled={!!applying}>
+                  <legend>Choose exactly which changes to approve</legend>
+                  <p className="field-note">Nothing is selected by default. Unchecked fields are kept unchanged on YouTube.</p>
+                  {([
+                    ["title", "Title", draft.title.trim() !== video.title],
+                    ["description", "Description", draft.description !== video.description],
+                    ["tags", "Tags", JSON.stringify(
+                      draft.tags.split(",").map(t => t.trim()).filter(Boolean),
+                    ) !== JSON.stringify(video.tags)],
+                  ] as const).map(([field, label, changed]) =>
+                    <label key={field}>
+                      <input type="checkbox" aria-label={`Approve ${label.toLowerCase()} change`}
+                        checked={(selectedFields[video.videoId] ?? []).includes(field)}
+                        disabled={!changed || !!applying}
+                        onChange={e => toggleApproval(video.videoId, field, e.target.checked)}/>
+                      {label} {changed ? "— include this change" : "— no change"}
+                    </label>)}
+                </fieldset>
                 <button type="button" className="button primary"
-                  disabled={!editor?.editingConnected || !!applying || !proposals(video.videoId) ||
-                    (draft.title.trim() === video.title && draft.description === video.description &&
-                      draft.tags === video.tags.join(", "))}
-                  onClick={() => setConfirmId(video.videoId)}>Review changes to apply</button>
+                  disabled={!editor?.editingConnected || !!applying || !hasSelectedChanges}
+                  onClick={() => review(video)}>Review selected changes</button>
                 {!editor?.editingConnected && <p className="field-note">Enable editing permission above to apply approved changes. Drafts can still be copied without it.</p>}
-                {confirmId === video.videoId && <section className="optimize-approval"
+                {approval && <section className="optimize-approval"
                   role="dialog" aria-label="Approve exact YouTube metadata changes">
-                  <h4>Approve edits to {video.title}</h4>
-                  <p>Video ID: {video.videoId}. Only the fields shown below will change.</p>
-                  {draft.title.trim() !== video.title && <div>
-                    <strong>Title</strong><p>Before: {video.title}</p><p>After: {draft.title.trim()}</p>
+                  <h4>Review selected changes to {approval.original.title}</h4>
+                  <p>Video ID: {approval.original.videoId}. Only the checked fields below will be updated. All other fields stay unchanged.</p>
+                  {approval.approvedFields.includes("title") && approval.proposed.title !== approval.original.title && <div>
+                    <strong>Title</strong><p>Before: {approval.original.title}</p><p>After: {approval.proposed.title}</p>
                   </div>}
-                  {draft.description !== video.description && <div>
-                    <strong>Description</strong><p>Before: {video.description || "(empty)"}</p>
-                    <p>After: {draft.description || "(empty)"}</p>
+                  {approval.approvedFields.includes("description") && approval.proposed.description !== approval.original.description && <div>
+                    <strong>Description</strong><p>Before: {approval.original.description || "(empty)"}</p>
+                    <p>After: {approval.proposed.description || "(empty)"}</p>
                   </div>}
-                  {draft.tags !== video.tags.join(", ") && <div>
-                    <strong>Tags</strong><p>Before: {video.tags.join(", ") || "(none)"}</p>
-                    <p>After: {draft.tags || "(none)"}</p>
+                  {approval.approvedFields.includes("tags") &&
+                    JSON.stringify(approval.proposed.tags) !== JSON.stringify(approval.original.tags) && <div>
+                    <strong>Tags</strong><p>Before: {approval.original.tags.join(", ") || "(none)"}</p>
+                    <p>After: {approval.proposed.tags.join(", ") || "(none)"}</p>
                   </div>}
-                  <p className="field-note">Creator Desk will re-fetch the current video first. If its metadata changed, the update will stop. An uncertain request will not be automatically retried.</p>
+                  <p className="field-note">Creator Desk will verify the current video before submitting only these approvals. If anything changed on YouTube, the update will stop. An uncertain request will not be automatically retried.</p>
                   <div className="youtube-actions">
                     <button className="button secondary" disabled={!!applying}
-                      onClick={() => setConfirmId("")}>Cancel</button>
+                      onClick={() => setPendingApproval(null)}>Cancel</button>
                     <button className="button primary" disabled={!!applying}
                       onClick={() => void apply(video)}>
                       {applying ? "Verifying YouTube changes…" : "Confirm and update this YouTube video"}
