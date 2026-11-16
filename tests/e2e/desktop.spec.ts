@@ -696,7 +696,7 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await page.getByRole("button", { name: "Connected channel", exact: true }).click();
   const videoLibrary = page.getByRole("region", { name: "Channel video library" });
   await expect(videoLibrary.getByText("Fixture upload", { exact: true })).toBeVisible();
-  await expect(videoLibrary.locator(".video-id").getByText("abcdefghijk")).toBeVisible();
+  await expect(videoLibrary.locator(".video-id")).toHaveText("abcdefghijk");
   // vidIQ-alternative Research must provide real public metadata, not a placeholder.
   await page.getByRole("button", { name: "Research", exact: true }).click();
   const research = page.getByRole("region", { name: "Video topic research" });
