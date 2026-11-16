@@ -22,6 +22,30 @@ describe("owner video metadata quality advice", () => {
     expect(result.candidateTags).toContain("Solar Battery");
     expect(result.candidateTags).not.toContain("viral trending");
   });
+  it("offers a title-grounded description starter without changing the original", () => {
+    const result = optimizationAdvice(record);
+    expect(result.suggestedDescriptionOpening).toContain(record.title);
+    expect(result.suggestedDescriptionOpening).toContain("truthful summary");
+    expect(record.description).toBe("");
+    expect(optimizationAdvice({ ...record, description: "A real summary." }).suggestedDescriptionOpening)
+      .toBeNull();
+  });
+  it("warns about front-loaded links while explicitly preserving disclosures", () => {
+    const result = optimizationAdvice({
+      ...record, description: "https://example.org/gear\\nAffiliate links disclosed here.",
+    });
+    const message = result.tips.find(t => t.label === "Consider leading with the video's story");
+    expect(message?.reason).toContain("disclosures");
+  });
+  it("detects missing first chapter and unrelated long descriptions without inventing timestamps", () => {
+    const result = optimizationAdvice({
+      ...record,
+      description: "This is a travel diary about a long walk in a city, restaurant options, practical travel advice, and lots of other detail unrelated to the stated video topic.\\n1:20 Arrival\\n2:40 Highlights",
+    });
+    expect(result.tips.some(t => t.label === "Check chapter timestamps")).toBe(true);
+    expect(result.tips.some(t => t.label === "Connect the opening to your video title")).toBe(true);
+    expect(result.tips.find(t => t.label === "Check chapter timestamps")?.reason).toContain("Do not invent");
+  });
   it("does not treat adequate basic metadata as proof of optimal reach", () => {
     const result = optimizationAdvice({ ...record, title: "A practical comparison of RV solar battery upgrades",
       description: "This is an accurate summary of the actual video, showing our RV solar system and the installed equipment with what we learned.",
