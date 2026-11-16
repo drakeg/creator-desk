@@ -1980,3 +1980,21 @@ dialog {
 }
 .research-result .change-card-heading { justify-content: space-between; }
 .research-result > p { overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* Explicit, accessible per-field approval for YouTube metadata edits. */
+.optimize-field-selection {
+  display: grid; gap: 10px; margin: 10px 0; padding: 14px;
+  border: 1px solid var(--line); border-radius: 10px;
+}
+.optimize-field-selection legend { padding: 0 5px; font-weight: 700; }
+.optimize-field-selection label {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  padding: 8px 6px; font-weight: 500;
+}
+.optimize-field-selection label:has(input:disabled) { opacity: .65; cursor: default; }
+.optimize-field-selection input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; }
+.optimize-approval {
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px; margin-top: 12px;
+}
+.optimize-approval p { overflow-wrap: anywhere; white-space: pre-wrap; }
