@@ -34,6 +34,7 @@ describe("owner video metadata quality advice", () => {
     const suggested = optimizationAdvice(record).suggestedDescriptionOpening;
     expect(suggested).not.toBeNull();
     const input = { original: record, approved: true as const,
+      approvedFields: ["description"],
       proposed: { title: record.title, description: suggested!, tags: record.tags } };
     expect(approvedMetadataUpdate.safeParse(input).success).toBe(false);
     expect(approvedMetadataUpdate.safeParse({
