@@ -26,6 +26,8 @@ describe("owner video metadata quality advice", () => {
     const result = optimizationAdvice(record);
     expect(result.suggestedDescriptionOpening).toContain(record.title);
     expect(result.suggestedDescriptionOpening).toContain("truthful summary");
+    expect(result.suggestedDescriptionOpening).toContain("\n\n");
+    expect(result.suggestedDescriptionOpening).not.toContain("\\n");
     expect(record.description).toBe("");
     expect(optimizationAdvice({ ...record, description: "A real summary." }).suggestedDescriptionOpening)
       .toBeNull();
