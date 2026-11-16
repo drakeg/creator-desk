@@ -46,14 +46,14 @@ export function optimizationAdvice(data: OptimizationResult): {
     reason: "The description has fewer than 100 characters. Consider a factual summary and relevant chapter markers or links only where accurate.",
   });
   const opening = data.description.trim().slice(0, 240);
-  const firstLine = data.description.trim().split(/\\r?\\n/)[0] ?? "";
-  const hasLinkFirst = /https?:\\/\\//i.test(firstLine) &&
-    (/https?:\\/\\//i.exec(firstLine)?.index ?? 1000) < 100;
+  const firstLine = data.description.trim().split(/\r?\n/)[0] ?? "";
+  const hasLinkFirst = /https?:\/\//i.test(firstLine) &&
+    (/https?:\/\//i.exec(firstLine)?.index ?? 1000) < 100;
   if (hasLinkFirst) tips.push({
     field: "description", label: "Consider leading with the video's story",
     reason: "Your description begins with a web link. Consider starting with one accurate sentence about the video, then keep your existing links and affiliate/sponsor disclosures intact. Do not automatically remove or rearrange required disclosures.",
   });
-  const important = title.match(/[\\p{L}\\p{N}]+/gu)?.filter(word =>
+  const important = title.match(/[\p{L}\p{N}]+/gu)?.filter(word =>
     word.length >= 4 && !stop.has(word.toLocaleLowerCase())) ?? [];
   if (opening.length >= 100 && important.length >= 2) {
     const present = important.filter(word =>
@@ -63,9 +63,9 @@ export function optimizationAdvice(data: OptimizationResult): {
       reason: `The opening 240 characters don't mention the title's main subject words (${important.slice(0, 3).join(", ")}). Consider a factual opening that explains the connection; don't add topics the video doesn't cover.`,
     });
   }
-  const chapterLines = data.description.split(/\\r?\\n/).filter(line =>
-    /^\\s*(?:\\d{1,2}:)?\\d{1,2}:\\d{2}\\s+\\S/.test(line));
-  if (chapterLines.length > 0 && !chapterLines.some(line => /^\\s*0{1,2}:00(?:\\s|$)/.test(line))) {
+  const chapterLines = data.description.split(/\r?\n/).filter(line =>
+    /^\s*(?:\d{1,2}:)?\d{1,2}:\d{2}\s+\S/.test(line));
+  if (chapterLines.length > 0 && !chapterLines.some(line => /^\s*0{1,2}:00(?:\s|$)/.test(line))) {
     tips.push({
       field: "description", label: "Check chapter timestamps",
       reason: "Your description contains timestamp-style chapter lines but none starts at 0:00. If these are YouTube chapters, verify that the first chapter starts at 0:00, that timestamps are ascending, and that each chapter matches the video. Do not invent timestamps.",
