@@ -223,6 +223,15 @@ export function Optimize() {
             <details>
               <summary>Edit recommendations for this video</summary>
               {draft && <div className="optimize-edit-fields">
+                {advice.suggestedDescriptionOpening && !draft.description.trim() &&
+                  <div>
+                    <p><strong>Suggested description starter:</strong> {advice.suggestedDescriptionOpening}</p>
+                    <button type="button" className="button secondary"
+                      onClick={() => edit(video.videoId, "description", advice.suggestedDescriptionOpening!)}>
+                      Use starter in editable draft
+                    </button>
+                    <p className="field-note">This starter uses only your existing title. Review it against the video, replace the placeholder, and add appropriate sponsor/affiliate disclosures before approving any update.</p>
+                  </div>}
                 <label>Proposed title
                   <textarea rows={2} maxLength={100} value={draft.title}
                     onChange={e => edit(video.videoId, "title", e.target.value)}/>

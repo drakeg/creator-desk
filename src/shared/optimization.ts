@@ -25,6 +25,7 @@ const stop = new Set(["the", "and", "for", "with", "from", "that", "this",
 export function optimizationAdvice(data: OptimizationResult): {
   tips: OptimizationTip[];
   candidateTags: string[];
+  suggestedDescriptionOpening: string | null;
 } {
   const tips: OptimizationTip[] = [];
   const title = normalize(data.title);
@@ -44,6 +45,32 @@ export function optimizationAdvice(data: OptimizationResult): {
     field: "description", label: "Add useful context to the description",
     reason: "The description has fewer than 100 characters. Consider a factual summary and relevant chapter markers or links only where accurate.",
   });
+  const opening = data.description.trim().slice(0, 240);
+  const firstLine = data.description.trim().split(/\r?\n/)[0] ?? "";
+  const hasLinkFirst = /https?:\/\//i.test(firstLine) &&
+    (/https?:\/\//i.exec(firstLine)?.index ?? 1000) < 100;
+  if (hasLinkFirst) tips.push({
+    field: "description", label: "Consider leading with the video's story",
+    reason: "Your description begins with a web link. Consider starting with one accurate sentence about the video, then keep your existing links and affiliate/sponsor disclosures intact. Do not automatically remove or rearrange required disclosures.",
+  });
+  const important = title.match(/[\p{L}\p{N}]+/gu)?.filter(word =>
+    word.length >= 4 && !stop.has(word.toLocaleLowerCase())) ?? [];
+  if (opening.length >= 100 && important.length >= 2) {
+    const present = important.filter(word =>
+      opening.toLocaleLowerCase().includes(word.toLocaleLowerCase()));
+    if (present.length === 0) tips.push({
+      field: "description", label: "Connect the opening to your video title",
+      reason: `The opening 240 characters don't mention the title's main subject words (${important.slice(0, 3).join(", ")}). Consider a factual opening that explains the connection; don't add topics the video doesn't cover.`,
+    });
+  }
+  const chapterLines = data.description.split(/\r?\n/).filter(line =>
+    /^\s*(?:\d{1,2}:)?\d{1,2}:\d{2}\s+\S/.test(line));
+  if (chapterLines.length > 0 && !chapterLines.some(line => /^\s*0{1,2}:00(?:\s|$)/.test(line))) {
+    tips.push({
+      field: "description", label: "Check chapter timestamps",
+      reason: "Your description contains timestamp-style chapter lines but none starts at 0:00. If these are YouTube chapters, verify that the first chapter starts at 0:00, that timestamps are ascending, and that each chapter matches the video. Do not invent timestamps.",
+    });
+  }
   const tags = new Set(data.tags.map(s => normalize(s).toLocaleLowerCase()));
   if (data.tags.length !== tags.size) tips.push({
     field: "tags", label: "Remove duplicate tags",
@@ -69,7 +96,12 @@ export function optimizationAdvice(data: OptimizationResult): {
     field: "title", label: "No basic metadata gaps detected",
     reason: "The automated checks found no simple omissions. This is not proof that the title, description or tags are optimized; review them against the actual video and audience.",
   });
-  return { tips, candidateTags };
+  // This starter uses only text the creator already supplied. It is never
+  // sent to YouTube until the creator explicitly reviews and approves a draft.
+  const suggestedDescriptionOpening = !data.description.trim() && title
+    ? `In this video: ${title}.\\n\\n[Add a truthful summary of what you show, then links and applicable disclosures.]`
+    : null;
+  return { tips, candidateTags, suggestedDescriptionOpening };
 }
 
 export const optimizationField = z.enum(["title", "description", "tags"]);
@@ -93,7 +125,8 @@ export const approvedMetadataUpdate = z.object({
   proposed: z.object({
     title: z.string().trim().min(1).max(100).refine(v => !/[<>]/.test(v)),
     description: z.string().max(5000).refine(v =>
-      !/[<>]/.test(v) && BufferByteLength(v) <= 5000,
+      !/[<>]/.test(v) && BufferByteLength(v) <= 5000 &&
+      !v.includes("[Add a truthful summary of what you show"),
       "YouTube descriptions must be at most 5,000 UTF-8 bytes and cannot contain angle brackets.",
     ),
     tags: z.array(z.string().trim().min(1).max(500)).max(100),
