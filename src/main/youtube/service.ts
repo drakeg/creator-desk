@@ -682,6 +682,7 @@ export class YouTube {
       write.run(`${prefix}:after`, JSON.stringify(proposed));
       write.run(`${prefix}:meta`, JSON.stringify({
         videoId: original.videoId, channelId: channel,
+        approvedFields: approval.approvedFields,
         at: new Date().toISOString(), result: "verified",
       }));
     });
