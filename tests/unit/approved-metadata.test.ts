@@ -7,7 +7,7 @@ import { CredentialVault } from "../../src/main/credentials";
 import { History } from "../../src/main/youtube/history";
 import { YouTube } from "../../src/main/youtube/service";
 import { EDIT_SCOPE, SCOPES } from "../../src/main/youtube/oauth";
-import { approvedMetadataUpdate, optimizationResult } from "../../src/shared/optimization";
+import { approvedMetadataUpdate, optimizationResult, selectedMetadata, type ApprovedMetadataUpdate } from "../../src/shared/optimization";
 import type { Transport } from "../../src/main/youtube/http";
 
 const channel = "UC1234567890123456789012";
@@ -25,7 +25,7 @@ const proposed = {
   description: initial.description,
   tags: ["RV solar", "solar upgrades"],
 };
-const approval = { original, proposed, approved: true as const };
+const approval: ApprovedMetadataUpdate = { original, proposed, approvedFields: ["title", "tags"], approved: true };
 
 const stores: Store[] = [];
 afterEach(() => {
@@ -89,6 +89,64 @@ describe("explicit YouTube metadata updates", () => {
     } }).success).toBe(false);
   });
 
+  it("rejects unapproved field changes even if a caller claims user approval", () => {
+    const effective = selectedMetadata(original, {
+      title: proposed.title, description: "Unapproved description replacement",
+      tags: ["unapproved tag"],
+    }, ["title"]);
+    expect(effective).toEqual({
+      title: proposed.title, description: original.description, tags: original.tags,
+    });
+    expect(approvedMetadataUpdate.safeParse({
+      original, proposed: effective, approvedFields: ["title"], approved: true,
+    }).success).toBe(true);
+    expect(approvedMetadataUpdate.safeParse({
+      original, proposed: { ...effective, description: "Changed without approval" },
+      approvedFields: ["title"], approved: true,
+    }).success).toBe(false);
+    expect(approvedMetadataUpdate.safeParse({
+      original, proposed: { ...effective, tags: ["unauthorized change"] },
+      approvedFields: ["title"], approved: true,
+    }).success).toBe(false);
+    expect(approvedMetadataUpdate.safeParse({
+      original, proposed: effective, approvedFields: ["title", "title"], approved: true,
+    }).success).toBe(false);
+    expect(approvedMetadataUpdate.safeParse({
+      original, proposed: effective, approvedFields: ["description"], approved: true,
+    }).success).toBe(false);
+    expect(approvedMetadataUpdate.safeParse({
+      original, proposed: effective, approvedFields: [], approved: true,
+    }).success).toBe(false);
+  });
+
+  it("preserves description and tags when approving title alone on the wire", async () => {
+    let current = { ...initial, tags: [...initial.tags] };
+    let writes = 0;
+    const transport: Transport = async (_url, options) => {
+      if (options.method === "PUT") {
+        writes++;
+        const body = JSON.parse(String(options.body));
+        expect(body.snippet.title).toBe(proposed.title);
+        expect(body.snippet.description).toBe(initial.description);
+        expect(body.snippet.tags).toEqual(initial.tags);
+        current = { ...current, ...body.snippet };
+        return Response.json({ id: videoId });
+      }
+      return Response.json({ items: [{ id: videoId, snippet: current }] });
+    };
+    const { youtube } = setup(transport);
+    const effective = selectedMetadata(original, {
+      title: proposed.title, description: "Do not write this",
+      tags: ["unapproved"],
+    }, ["title"]);
+    const result = await youtube.applyApprovedMetadata({
+      original, proposed: effective, approvedFields: ["title"], approved: true,
+    });
+    expect(writes).toBe(1);
+    expect(result.description).toBe(original.description);
+    expect(result.tags).toEqual(original.tags);
+  });
+
   it("updates only the approved video's snippet, verifies readback and logs the result", async () => {
     let current = { ...initial, tags: [...initial.tags] };
     const sent: unknown[] = [];
@@ -122,7 +180,7 @@ describe("explicit YouTube metadata updates", () => {
     const before = history.find(row => row.key.endsWith(":before"));
     const after = history.find(row => row.key.endsWith(":after"));
     expect(JSON.parse(meta!.value)).toMatchObject({
-      videoId, channelId: channel, result: "verified",
+      videoId, channelId: channel, result: "verified", approvedFields: ["title", "tags"],
     });
     expect(JSON.parse(before!.value)).toMatchObject({ title: original.title });
     expect(JSON.parse(after!.value)).toEqual(proposed);
