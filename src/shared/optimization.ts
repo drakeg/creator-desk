@@ -110,7 +110,8 @@ export const approvedMetadataUpdate = z.object({
   proposed: z.object({
     title: z.string().trim().min(1).max(100).refine(v => !/[<>]/.test(v)),
     description: z.string().max(5000).refine(v =>
-      !/[<>]/.test(v) && BufferByteLength(v) <= 5000,
+      !/[<>]/.test(v) && BufferByteLength(v) <= 5000 &&
+      !v.includes("[Add a truthful summary of what you show"),
       "YouTube descriptions must be at most 5,000 UTF-8 bytes and cannot contain angle brackets.",
     ),
     tags: z.array(z.string().trim().min(1).max(500)).max(100),
