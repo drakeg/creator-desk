@@ -1,3 +1,17 @@
+Creator Desk 0.15.1 — Selective approval and improved optimization drafts
+
+Patch release for individually approved YouTube metadata updates:
+- The Optimize editor now has separate title, description and tags approval checkboxes, all unchecked by default. Edit drafts freely and select only the fields to update.
+- Review selected changes presents the exact before/after values for checked fields only. Changing a draft or checkbox clears the previous confirmation. No automatic posting occurs.
+- The main process independently rejects any update request that modifies an unchecked field. The authorized YouTube snippet update preserves unselected title, description and tags and still verifies current ownership, freshness and readback.
+- The local audit record includes the individually approved field names.
+- Optimize now offers factual title/description-alignment and chapter-start checks. Empty descriptions can use an editable title-grounded starter; v0.15.1 fixes starter paragraph breaks. The placeholder cannot be submitted unchanged.
+- Google editing permission remains optional, broad, and separate from read-only recommendations. See docs/YOUTUBE-EDITING.md. Don't apply edits to a real video without checking the exact diff first.
+- Electron cross-platform CI must pass on macOS ARM64/Intel, Windows x64, and Linux x64 before release publication; installers/checksums must be verified independently. No new dependencies or paid services.
+
+---
+Previous release notes
+
 Creator Desk 0.15.0 — Comments and proactive YouTube optimization
 
 New: Automatic vidIQ-style Optimize feed
