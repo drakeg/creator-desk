@@ -60,7 +60,7 @@ describe("owner video metadata quality advice", () => {
   it("does not flag valid chapters beginning at 0:00", () => {
     const result = optimizationAdvice({
       ...record,
-      description: "0:00 Introduction\\n1:20 Arrival\\n2:40 Highlights",
+      description: "0:00 Introduction\n1:20 Arrival\n2:40 Highlights",
     });
     expect(result.tips.some(t => t.label === "Check chapter timestamps")).toBe(false);
   });
