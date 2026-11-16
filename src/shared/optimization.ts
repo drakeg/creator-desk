@@ -72,6 +72,21 @@ export function optimizationAdvice(data: OptimizationResult): {
   return { tips, candidateTags };
 }
 
+export const optimizationField = z.enum(["title", "description", "tags"]);
+export type OptimizationField = z.infer<typeof optimizationField>;
+
+/** Produce the exact requested metadata. Unchecked fields cannot change. */
+export function selectedMetadata(
+  original: OptimizationResult,
+  draft: { title: string; description: string; tags: string[] },
+  approvedFields: readonly OptimizationField[],
+) {
+  return {
+    title: approvedFields.includes("title") ? draft.title.trim() : original.title,
+    description: approvedFields.includes("description") ? draft.description : original.description,
+    tags: approvedFields.includes("tags") ? draft.tags : original.tags,
+  };
+}
 /** Exact-diff, per-video approval. These are draft values, not automatic suggestions. */
 export const approvedMetadataUpdate = z.object({
   original: optimizationResult,
@@ -87,12 +102,27 @@ export const approvedMetadataUpdate = z.object({
       .reduce((total, n) => total + n + 1, 0);
     return length <= 500 && v.tags.every(t => !/[<>]/.test(t));
   }, "YouTube tag length exceeds 500 characters or contains unsupported characters."),
+  approvedFields: z.array(optimizationField).min(1).max(3)
+    .refine(fields => new Set(fields).size === fields.length, "Duplicate field approval."),
   approved: z.literal(true),
-}).strict().refine(v => v.proposed.title !== v.original.title ||
-  v.proposed.description !== v.original.description ||
-  JSON.stringify(v.proposed.tags) !== JSON.stringify(v.original.tags),
-  "No metadata changes to apply.",
-);
+}).strict().superRefine((v, ctx) => {
+  const keys = ["title", "description", "tags"] as const;
+  let changed = false;
+  for (const key of keys) {
+    const difference = key === "tags" ?
+      JSON.stringify(v.proposed.tags) !== JSON.stringify(v.original.tags) :
+      v.proposed[key] !== v.original[key];
+    if (!v.approvedFields.includes(key) && difference) ctx.addIssue({
+      code: "custom", path: ["proposed", key],
+      message: `Unapproved ${key} must match the current metadata exactly.`,
+    });
+    if (v.approvedFields.includes(key) && difference) changed = true;
+  }
+  if (!changed) ctx.addIssue({
+    code: "custom", path: ["approvedFields"],
+    message: "Select at least one actual metadata change to apply.",
+  });
+});
 function BufferByteLength(text: string) {
   return new TextEncoder().encode(text).length;
 }
