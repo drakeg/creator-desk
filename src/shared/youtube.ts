@@ -18,6 +18,9 @@ export interface YouTubeState {
   connected: boolean;
   pending: boolean;
   error: string | null;
+  editingConnected?: boolean;
+  editingPending?: boolean;
+  editingError?: string | null;
   snapshot: ChannelSnapshot | null;
   reachSync?: boolean;
   sync?: { message: string } | null;
