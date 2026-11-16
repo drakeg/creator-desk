@@ -694,9 +694,9 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   // Startup can retain a different analytics sub-tab; explicitly open the
   // connected-channel library before asserting its table contents.
   await page.getByRole("button", { name: "Connected channel", exact: true }).click();
-  await expect(
-    page.getByRole("cell", { name: "Fixture upload abcdefghijk", exact: true }),
-  ).toBeVisible();
+  const videoLibrary = page.getByRole("region", { name: "Channel video library" });
+  await expect(videoLibrary.getByText("Fixture upload", { exact: true })).toBeVisible();
+  await expect(videoLibrary.locator(".video-id").getByText("abcdefghijk")).toBeVisible();
   // vidIQ-alternative Research must provide real public metadata, not a placeholder.
   await page.getByRole("button", { name: "Research", exact: true }).click();
   const research = page.getByRole("region", { name: "Video topic research" });
