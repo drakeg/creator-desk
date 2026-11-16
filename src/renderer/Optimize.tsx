@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { OptimizationResult } from "../shared/optimization";
-import { optimizationAdvice } from "../shared/optimization";
+import type { OptimizationResult, OptimizationField, ApprovedMetadataUpdate } from "../shared/optimization";
+import { optimizationAdvice, selectedMetadata } from "../shared/optimization";
 import { ownedShortsUploads } from "../shared/owned-shorts";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 
@@ -19,7 +19,8 @@ export function Optimize() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [editor, setEditor] = useState<YouTubeState | null>(null);
-  const [confirmId, setConfirmId] = useState("");
+  const [selectedFields, setSelectedFields] = useState<Record<string, OptimizationField[]>>({});
+  const [pendingApproval, setPendingApproval] = useState<ApprovedMetadataUpdate | null>(null);
   const [applying, setApplying] = useState("");
   const [count, setCount] = useState(0);
 
@@ -89,27 +90,56 @@ export function Optimize() {
       setError("Could not start Google editing authorization.");
     }
   }
-  const proposals = (videoId: string) => {
-    const draft = drafts[videoId];
+  const proposals = (video: OptimizationResult) => {
+    const draft = drafts[video.videoId];
     if (!draft) return null;
-    return { title: draft.title.trim(), description: draft.description,
-      tags: draft.tags.split(",").map(t => t.trim()).filter(Boolean) };
+    const tags = draft.tags.split(",").map(t => t.trim()).filter(Boolean);
+    const fields = selectedFields[video.videoId] ?? [];
+    const proposed = selectedMetadata(video, {
+      title: draft.title, description: draft.description, tags,
+    }, fields);
+    return { proposed, approvedFields: fields };
   };
+  function toggleApproval(videoId: string, field: OptimizationField, checked: boolean) {
+    setSelectedFields(current => {
+      const fields = current[videoId] ?? [];
+      return { ...current, [videoId]: checked
+        ? [...fields.filter(item => item !== field), field]
+        : fields.filter(item => item !== field) };
+    });
+    setPendingApproval(null);
+  }
+  function review(video: OptimizationResult) {
+    const selection = proposals(video);
+    if (!selection || !selection.approvedFields.length) return;
+    const { proposed, approvedFields } = selection;
+    const changed = approvedFields.some(field => field === "tags"
+      ? JSON.stringify(proposed.tags) !== JSON.stringify(video.tags)
+      : proposed[field] !== video[field]);
+    if (!changed) {
+      setError("Select at least one field with an actual change.");
+      return;
+    }
+    setError("");
+    // Freeze the reviewed values; later text edits can't silently modify approval.
+    setPendingApproval({
+      original: video, proposed, approvedFields: [...approvedFields], approved: true,
+    });
+  }
   async function apply(video: OptimizationResult) {
-    const proposed = proposals(video.videoId);
-    if (!proposed || !editor?.editingConnected) return;
+    const approval = pendingApproval;
+    if (!approval || approval.original.videoId !== video.videoId || !editor?.editingConnected) return;
     setApplying(video.videoId); setError(""); setNotice("");
     try {
-      const response = await window.desktop.applyApprovedMetadata({
-        original: video, proposed, approved: true,
-      });
+      const response = await window.desktop.applyApprovedMetadata(approval);
       if (!response.ok) { setError(response.error.message); return; }
       setVideos(current => current.map(v => v.videoId === video.videoId ? response.value : v));
       setDrafts(current => ({ ...current, [video.videoId]: draftOf(response.value) }));
+      setSelectedFields(current => ({ ...current, [video.videoId]: [] }));
       setNotice(`YouTube confirmed and saved the approved changes to "${response.value.title}".`);
     } catch {
       setError("Update result is uncertain. Check the video on YouTube before retrying.");
-    } finally { setConfirmId(""); setApplying(""); }
+    } finally { setPendingApproval(null); setApplying(""); }
   }
   async function refresh(videoId: string) {
     setRefreshing(videoId);
@@ -119,11 +149,14 @@ export function Optimize() {
       if (!result.ok) { setError(result.error.message); return; }
       setVideos(current => current.map(item => item.videoId === videoId ? result.value : item));
       setDrafts(current => ({ ...current, [videoId]: draftOf(result.value) }));
+      setSelectedFields(current => ({ ...current, [videoId]: [] }));
+      setPendingApproval(null);
     } catch {
       setError("Could not refresh this video. Its existing recommendations remain visible.");
     } finally { setRefreshing(""); }
   }
   function edit(videoId: string, key: keyof Draft, value: string) {
+    setPendingApproval(null);
     setDrafts(current => ({
       ...current, [videoId]: { ...current[videoId]!, [key]: value },
     }));
@@ -157,6 +190,12 @@ export function Optimize() {
       {videos.map(video => {
         const advice = optimizationAdvice(video);
         const draft = drafts[video.videoId];
+        const selected = proposals(video);
+        const hasSelectedChanges = !!selected && selected.approvedFields.some(field =>
+          field === "tags" ? JSON.stringify(selected.proposed.tags) !== JSON.stringify(video.tags)
+            : selected.proposed[field] !== video[field]);
+        const approval = pendingApproval?.original.videoId === video.videoId
+          ? pendingApproval : null;
         return <article className="optimize-feed-card" key={video.videoId}>
           <div className="optimize-feed-media">
             {thumbnails[video.videoId] ?
@@ -211,31 +250,48 @@ export function Optimize() {
                   ).then(() => setNotice("Reviewed draft copied."))
                     .catch(() => setError("Could not copy this draft."));
                 }}>Copy edited draft</button>
+                <fieldset className="optimize-field-selection" disabled={!!applying}>
+                  <legend>Choose exactly which changes to approve</legend>
+                  <p className="field-note">Nothing is selected by default. Unchecked fields are kept unchanged on YouTube.</p>
+                  {([
+                    ["title", "Title", draft.title.trim() !== video.title],
+                    ["description", "Description", draft.description !== video.description],
+                    ["tags", "Tags", JSON.stringify(
+                      draft.tags.split(",").map(t => t.trim()).filter(Boolean),
+                    ) !== JSON.stringify(video.tags)],
+                  ] as const).map(([field, label, changed]) =>
+                    <label key={field}>
+                      <input type="checkbox" aria-label={`Approve ${label.toLowerCase()} change`}
+                        checked={(selectedFields[video.videoId] ?? []).includes(field)}
+                        disabled={!changed || !!applying}
+                        onChange={e => toggleApproval(video.videoId, field, e.target.checked)}/>
+                      {label} {changed ? "— include this change" : "— no change"}
+                    </label>)}
+                </fieldset>
                 <button type="button" className="button primary"
-                  disabled={!editor?.editingConnected || !!applying || !proposals(video.videoId) ||
-                    (draft.title.trim() === video.title && draft.description === video.description &&
-                      draft.tags === video.tags.join(", "))}
-                  onClick={() => setConfirmId(video.videoId)}>Review changes to apply</button>
+                  disabled={!editor?.editingConnected || !!applying || !hasSelectedChanges}
+                  onClick={() => review(video)}>Review selected changes</button>
                 {!editor?.editingConnected && <p className="field-note">Enable editing permission above to apply approved changes. Drafts can still be copied without it.</p>}
-                {confirmId === video.videoId && <section className="optimize-approval"
+                {approval && <section className="optimize-approval"
                   role="dialog" aria-label="Approve exact YouTube metadata changes">
-                  <h4>Approve edits to {video.title}</h4>
-                  <p>Video ID: {video.videoId}. Only the fields shown below will change.</p>
-                  {draft.title.trim() !== video.title && <div>
-                    <strong>Title</strong><p>Before: {video.title}</p><p>After: {draft.title.trim()}</p>
+                  <h4>Review selected changes to {approval.original.title}</h4>
+                  <p>Video ID: {approval.original.videoId}. Only the checked fields below will be updated. All other fields stay unchanged.</p>
+                  {approval.approvedFields.includes("title") && approval.proposed.title !== approval.original.title && <div>
+                    <strong>Title</strong><p>Before: {approval.original.title}</p><p>After: {approval.proposed.title}</p>
                   </div>}
-                  {draft.description !== video.description && <div>
-                    <strong>Description</strong><p>Before: {video.description || "(empty)"}</p>
-                    <p>After: {draft.description || "(empty)"}</p>
+                  {approval.approvedFields.includes("description") && approval.proposed.description !== approval.original.description && <div>
+                    <strong>Description</strong><p>Before: {approval.original.description || "(empty)"}</p>
+                    <p>After: {approval.proposed.description || "(empty)"}</p>
                   </div>}
-                  {draft.tags !== video.tags.join(", ") && <div>
-                    <strong>Tags</strong><p>Before: {video.tags.join(", ") || "(none)"}</p>
-                    <p>After: {draft.tags || "(none)"}</p>
+                  {approval.approvedFields.includes("tags") &&
+                    JSON.stringify(approval.proposed.tags) !== JSON.stringify(approval.original.tags) && <div>
+                    <strong>Tags</strong><p>Before: {approval.original.tags.join(", ") || "(none)"}</p>
+                    <p>After: {approval.proposed.tags.join(", ") || "(none)"}</p>
                   </div>}
-                  <p className="field-note">Creator Desk will re-fetch the current video first. If its metadata changed, the update will stop. An uncertain request will not be automatically retried.</p>
+                  <p className="field-note">Creator Desk will verify the current video before submitting only these approvals. If anything changed on YouTube, the update will stop. An uncertain request will not be automatically retried.</p>
                   <div className="youtube-actions">
                     <button className="button secondary" disabled={!!applying}
-                      onClick={() => setConfirmId("")}>Cancel</button>
+                      onClick={() => setPendingApproval(null)}>Cancel</button>
                     <button className="button primary" disabled={!!applying}
                       onClick={() => void apply(video)}>
                       {applying ? "Verifying YouTube changes…" : "Confirm and update this YouTube video"}
