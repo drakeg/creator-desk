@@ -718,7 +718,7 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await card.getByText("Edit recommendations for this video").click();
   await expect(card.getByLabel("Proposed title")).toHaveValue("Fixture upload");
   await card.getByRole("button", { name: "Add tag Fixture upload to draft" }).click();
-  await expect(card.getByLabel("Proposed tags (comma-separated)")).toContainText("Fixture upload");
+  await expect(card.getByLabel("Proposed tags (comma-separated)")).toHaveValue(/Fixture upload/);
   await expect(card.getByRole("checkbox", { name: "Approve tags change" })).not.toBeChecked();
   await card.getByLabel("Proposed title").fill("Fixture upload with an accurate title");
   await card.getByLabel("Proposed description").fill("UNAPPROVED DESCRIPTION");
