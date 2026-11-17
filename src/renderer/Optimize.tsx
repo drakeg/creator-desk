@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { OptimizationResult, OptimizationField, ApprovedMetadataUpdate } from "../shared/optimization";
-import { optimizationAdvice, selectedMetadata } from "../shared/optimization";
+import { appendSuggestedTag, optimizationAdvice, selectedMetadata } from "../shared/optimization";
 import { ownedShortsUploads } from "../shared/owned-shorts";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 
@@ -218,8 +218,19 @@ export function Optimize() {
               <strong>{tip.label}</strong> ({tip.field}): {tip.reason}
             </li>)}</ul>
             {!!advice.candidateTags.length &&
-              <p><strong>Possible tags:</strong> {advice.candidateTags.join(", ")}.
-                Use only accurate phrases.</p>}
+              <div className="optimize-tag-suggestions">
+                <p><strong>Possible tags from your title:</strong> Choose only phrases that accurately describe the video. Adding one edits your local draft; it does not approve or publish it.</p>
+                <div className="youtube-actions">
+                  {advice.candidateTags.map(tag => <button key={tag} type="button"
+                    className="button secondary" aria-label={`Add tag ${tag} to draft`}
+                    disabled={!draft || !!applying || draft.tags.split(",").some(t =>
+                      t.trim().toLocaleLowerCase() === tag.toLocaleLowerCase())}
+                    onClick={() => {
+                      if (!draft) return;
+                      edit(video.videoId, "tags", appendSuggestedTag(draft.tags, tag));
+                    }}>+ {tag}</button>)}
+                </div>
+              </div>}
             <details>
               <summary>Edit recommendations for this video</summary>
               {draft && <div className="optimize-edit-fields">
