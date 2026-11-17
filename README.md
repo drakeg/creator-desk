@@ -1,6 +1,6 @@
-# Creator Desk 0.15.0 (development)
+# Creator Desk 0.15.1 (development)
 
-An installable desktop app for synchronizing YouTube channel history, importing supplemental analytics, and creating Shorts. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research, proactive Optimize, and a read-only comments inbox are available. Individually approved YouTube title/description/tag updates are supported behind optional Google editing permission; competitor intelligence remains in development.
+An installable desktop app for synchronizing YouTube channel history, importing supplemental analytics, and creating Shorts. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research, proactive Optimize, and a read-only comments inbox are available. Per-field selective approval of YouTube title/description/tag edits is supported behind optional Google editing permission; competitor intelligence remains in development.
 
 ## Try new features sooner
 
