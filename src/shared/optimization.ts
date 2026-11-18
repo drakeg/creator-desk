@@ -110,7 +110,7 @@ export function appendSuggestedTag(draft: string, suggested: string): string {
   if (!candidate || candidate.includes(",") || /[<>]/.test(candidate)) return draft;
   const existing = draft.split(",").map(t => t.trim()).filter(Boolean);
   if (existing.some(t => t.toLocaleLowerCase() === candidate.toLocaleLowerCase())) return draft;
-  return draft.trim() ? `${draft.trimEnd().replace(/,\\s*$/, "")}, ${candidate}` : candidate;
+  return [...existing, candidate].join(", ");
 }
 
 export const optimizationField = z.enum(["title", "description", "tags"]);
