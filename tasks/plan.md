@@ -1,3 +1,19 @@
+## Sprint: Repository hygiene and trustworthy project status (November 2026)
+
+**Active maintenance slice:** README badges, contribution/agent standards and documentation validation. No promised delivery date. Keep technology claims backed by source rather than inferred dependencies.
+
+- [x] Inspect actual Electron/React/TypeScript/Node/SQLite build and distribution capabilities, existing workflows and licensing.
+- [x] Add dynamic CI, release and activity indicators plus verified technology badges immediately below README title.
+- [x] Add AGENTS.md, a badge-validation script and a dedicated documentation workflow.
+- [ ] Verify README validation and desktop CI on the maintenance PR; remediate introduced failures before merge.
+- [ ] Review [central repository standards](https://github.com/drakeg/madmallard-repository-standards) for more detailed rules/templates when published and migrate without losing truthful badges.
+
+**Related break/fix:** Existing feature and Renovate PRs #99, #101, #102 and #103 have separate CI branches. Audit regressions are not resolved by badge maintenance; retain the security gate, investigate upstream advisories, apply supported updates, and track any unfixed upstream vulnerability as a backlog item. Keep regular Creator Desk optimization work (such as individually selected candidate tags) in its existing PR.
+
+**Definition of done:** Correct linked badges, a passing documentation validation job, updated agent rules, and an actionable GitHub issue for any blocked third-party security fix.
+
+---
+
 # Desktop core implementation
 
 The user approved the specification and explicitly requested coding on October 28, 2026. Proceed through these slices without additional planning gates.
