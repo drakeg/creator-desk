@@ -76,6 +76,21 @@ describe("owner video metadata quality advice", () => {
     });
     expect(result.tips.some(t => t.label === "Check chapter timestamps")).toBe(false);
   });
+  it("flags duplicate and backwards chapter timestamps without rewriting them", () => {
+    const description = "0:00 Intro\n2:40 Tour\n2:40 Details\n1:20 Recap";
+    const result = optimizationAdvice({ ...record, description });
+    expect(result.tips.some(t => t.label === "Review chapter order")).toBe(true);
+    expect(result.tips.find(t => t.label === "Review chapter order")?.reason)
+      .toContain("no timestamps will be changed automatically");
+    expect(description).toContain("2:40 Details");
+    expect(needsMetadataReview({ ...record, description })).toBe(true);
+  });
+  it("accepts ascending hour-format chapter timestamps", () => {
+    const result = optimizationAdvice({
+      ...record, description: "0:00 Intro\n9:59 Tour\n1:00:00 Wrap-up",
+    });
+    expect(result.tips.some(t => t.label === "Review chapter order")).toBe(false);
+  });
   it("filters only videos with rule-based metadata gaps without guessing performance", () => {
     expect(needsMetadataReview(record)).toBe(true);
     const complete = {
