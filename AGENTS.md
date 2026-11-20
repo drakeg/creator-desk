@@ -9,7 +9,7 @@
 This repository follows [Mad Mallard Repository Standards](https://github.com/drakeg/madmallard-repository-standards), when that repository contains applicable documented rules. The repository currently has only a short landing README, so the verified local rules below apply until central templates are published.
 
 - Keep the compact `<!-- badges:start -->` / `<!-- badges:end -->` badge block directly under the first H1 in `README.md`. Use Shields.io and official GitHub Actions badge URLs; preserve the remaining README.
-- Show only technology and version information backed by `package.json`, `package-lock.json`, workflow configuration or actual source files. Update version badges on every relevant dependency or CI runtime change.
+- Show only technology and version information backed by `package.json`, `package-lock.json`, workflow configuration or actual source files. TypeScript, React, Electron and Vite badges **dynamically read the main branch's package.json**; never replace them with a fixed current version. CI Node runtime badges must be updated when workflow runtime versions change and are checked against the workflow.
 - The workflow badge reflects the real `Desktop releases` workflow covering lint, typecheck, unit tests, audit, packaging and installed-app tests. Never replace it with a hard-coded green status.
 - Use live Shields.io GitHub badges for published releases, issue counts and PR counts. Do not imply a release exists merely from a package version.
 - Link badges to their source configuration, relevant GitHub Actions workflow, releases or issue/PR pages. Do not include license badges unless an actual license file is present and verified.
