@@ -22,7 +22,7 @@ const expected = [
   ["Vite", "$.devDependencies.vite", pkg.devDependencies.vite],
 ];
 for (const [label, query, version] of expected) {
-  assert(typeof version === "string" && /^\\d+\\.\\d+\\.\\d+/.test(version),
+  assert(typeof version === "string" && /^\d+\.\d+\.\d+/.test(version),
     `Cannot verify ${label} version from package.json`);
   const expectedSource = `![${label}](https://img.shields.io/badge/dynamic/json?url=${sourceUrl}&query=${encodeURIComponent(query)}&label=${label}`;
   assert(section.includes(expectedSource), `Missing or stale ${label} dynamic manifest badge`);
