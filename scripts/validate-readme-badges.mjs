@@ -7,6 +7,12 @@ const pkg = JSON.parse(read("package.json"));
 const readme = read("README.md");
 const workflow = read(".github/workflows/releases.yml");
 const agents = read("AGENTS.md");
+for (const name of ["SPRINTS.md", "BACKLOG.md", "CONTRIBUTING.md", "RELEASES.md", "SECURITY.md"]) {
+  const content = read(name);
+  assert(content.startsWith("# "), `${name} must have a Markdown title`);
+  assert(content.length > 250, `${name} must contain project-specific guidance`);
+}
+
 const path = "https://github.com/drakeg/creator-desk";
 const badges = readme.match(/<!-- badges:start -->([\s\S]*?)<!-- badges:end -->/);
 assert(badges, "README badge markers must exist");
