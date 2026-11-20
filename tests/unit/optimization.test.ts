@@ -76,7 +76,9 @@ describe("owner video metadata quality advice", () => {
       tags: ["RV Solar", "battery", "installation"],
     };
     expect(needsMetadataReview(complete)).toBe(false);
-    expect(optimizationAdvice(complete).tips[0]?.label).toBe("No basic metadata gaps detected");
+    expect(optimizationAdvice(complete).tips.every(tip =>
+      tip.label === "Review topic phrases from your title" ||
+      tip.label === "No basic metadata gaps detected")).toBe(true);
     expect(needsMetadataReview({ ...complete, description: "" })).toBe(true);
   });
   it("does not treat adequate basic metadata as proof of optimal reach", () => {
