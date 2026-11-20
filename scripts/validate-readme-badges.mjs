@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { strict as assert } from "node:assert";
+import { URL } from "node:url";
 
 const read = file => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const pkg = JSON.parse(read("package.json"));
