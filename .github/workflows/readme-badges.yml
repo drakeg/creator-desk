@@ -5,6 +5,11 @@ on:
     paths:
       - README.md
       - AGENTS.md
+      - SPRINTS.md
+      - BACKLOG.md
+      - CONTRIBUTING.md
+      - RELEASES.md
+      - SECURITY.md
       - package.json
       - package-lock.json
       - src/main/storage/store.ts
@@ -16,6 +21,11 @@ on:
     paths:
       - README.md
       - AGENTS.md
+      - SPRINTS.md
+      - BACKLOG.md
+      - CONTRIBUTING.md
+      - RELEASES.md
+      - SECURITY.md
       - package.json
       - package-lock.json
       - src/main/storage/store.ts
