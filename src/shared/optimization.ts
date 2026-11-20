@@ -71,6 +71,20 @@ export function optimizationAdvice(data: OptimizationResult): {
       reason: "Your description contains timestamp-style chapter lines but none starts at 0:00. If these are YouTube chapters, verify that the first chapter starts at 0:00, that timestamps are ascending, and that each chapter matches the video. Do not invent timestamps.",
     });
   }
+  // Check only timestamp-prefixed lines that look like chapter labels. Preserve
+  // the creator's text; we do not generate or silently reorder chapters.
+  const chapterSeconds = chapterLines.map(line => {
+    const match = /^\s*((?:\d{1,2}:)?\d{1,2}:\d{2})\s+\S/.exec(line);
+    const parts = match![1]!.split(":").map(Number);
+    return parts.reduce((seconds, part) => seconds * 60 + part, 0);
+  });
+  if (chapterSeconds.some((seconds, index) =>
+    index > 0 && seconds <= chapterSeconds[index - 1]!)) {
+    tips.push({
+      field: "description", label: "Review chapter order",
+      reason: "Chapter-style timestamps repeat or move backwards. Check the order against your actual video before editing; no timestamps will be changed automatically.",
+    });
+  }
   const tags = new Set(data.tags.map(s => normalize(s).toLocaleLowerCase()));
   if (data.tags.length !== tags.size) tips.push({
     field: "tags", label: "Remove duplicate tags",
