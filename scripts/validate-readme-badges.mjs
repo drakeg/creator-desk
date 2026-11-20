@@ -14,13 +14,18 @@ const section = badges[1];
 assert(readme.indexOf("<!-- badges:start -->") > readme.indexOf("\n"), "Badges must follow H1");
 assert(readme.slice(readme.indexOf("\n")+1,readme.indexOf("<!-- badges:start -->")).trim() === "", "Badges must be immediately beneath title");
 assert(section.split(/\n\s*\n/).filter(Boolean).length <= 3, "Use at most three compact badge rows");
+const sourceUrl = encodeURIComponent("https://raw.githubusercontent.com/drakeg/creator-desk/main/package.json");
 const expected = [
-  ["TypeScript", pkg.devDependencies.typescript],
-  ["React", pkg.dependencies.react],
-  ["Electron", pkg.devDependencies.electron],
+  ["TypeScript", "$.devDependencies.typescript", pkg.devDependencies.typescript],
+  ["React", "$.dependencies.react", pkg.dependencies.react],
+  ["Electron", "$.devDependencies.electron", pkg.devDependencies.electron],
+  ["Vite", "$.devDependencies.vite", pkg.devDependencies.vite],
 ];
-for (const [label, version] of expected) {
-  assert(section.includes(`![${label} ${version}]`), `Stale or missing ${label} version badge`);
+for (const [label, query, version] of expected) {
+  assert(typeof version === "string" && /^\\d+\\.\\d+\\.\\d+/.test(version),
+    `Cannot verify ${label} version from package.json`);
+  const expectedSource = `![${label}](https://img.shields.io/badge/dynamic/json?url=${sourceUrl}&query=${encodeURIComponent(query)}&label=${label}`;
+  assert(section.includes(expectedSource), `Missing or stale ${label} dynamic manifest badge`);
 }
 const node = workflow.match(/node-version:\s*["']?([\d.]+)/)?.[1];
 assert(node, "Cannot find CI Node.js version");
