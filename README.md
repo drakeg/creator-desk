@@ -1,5 +1,14 @@
 # Creator Desk 0.15.1 (development)
 
+<!-- badges:start -->
+[![TypeScript 6.0.3](https://img.shields.io/badge/TypeScript-6.0.3-3178C6?logo=typescript&logoColor=white)](https://github.com/drakeg/creator-desk/blob/main/package.json) [![React 19.3.1](https://img.shields.io/badge/React-19.3.1-149ECA?logo=react&logoColor=white)](https://github.com/drakeg/creator-desk/blob/main/package.json) [![Electron 45.3.3](https://img.shields.io/badge/Electron-45.3.3-47848F?logo=electron&logoColor=white)](https://github.com/drakeg/creator-desk/blob/main/package.json) [![Node.js 22.23.5](https://img.shields.io/badge/Node.js-22.23.5-339933?logo=nodedotjs&logoColor=white)](https://github.com/drakeg/creator-desk/blob/main/.github/workflows/releases.yml) [![SQLite](https://img.shields.io/badge/SQLite-Node%20built--in-003B57?logo=sqlite&logoColor=white)](https://github.com/drakeg/creator-desk/blob/main/src/main/storage/store.ts)
+
+[![Desktop CI, tests and security audit](https://github.com/drakeg/creator-desk/actions/workflows/releases.yml/badge.svg?branch=main)](https://github.com/drakeg/creator-desk/actions/workflows/releases.yml) [![Latest release](https://img.shields.io/github/v/release/drakeg/creator-desk?label=release)](https://github.com/drakeg/creator-desk/releases/latest) [![Open issues](https://img.shields.io/github/issues/drakeg/creator-desk)](https://github.com/drakeg/creator-desk/issues) [![Open PRs](https://img.shields.io/github/issues-pr/drakeg/creator-desk)](https://github.com/drakeg/creator-desk/pulls)
+
+[![Contributing](https://img.shields.io/badge/Contributing-guide-596579?logo=github)](https://github.com/drakeg/creator-desk/blob/main/AGENTS.md) [![Platforms](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20Linux-596579)](https://github.com/drakeg/creator-desk/blob/main/.github/workflows/releases.yml)
+<!-- badges:end -->
+
+
 An installable desktop app for synchronizing YouTube channel history, importing supplemental analytics, and creating Shorts. macOS, Windows, and Debian/Ubuntu Linux builds are supported. Research, proactive Optimize, and a read-only comments inbox are available. Per-field selective approval of YouTube title/description/tag edits is supported behind optional Google editing permission; competitor intelligence remains in development.
 
 ## Try new features sooner
