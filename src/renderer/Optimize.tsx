@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { OptimizationResult, OptimizationField, ApprovedMetadataUpdate } from "../shared/optimization";
-import { optimizationAdvice, selectedMetadata } from "../shared/optimization";
+import { needsMetadataReview, optimizationAdvice, selectedMetadata } from "../shared/optimization";
 import { ownedShortsUploads } from "../shared/owned-shorts";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 
@@ -23,6 +23,7 @@ export function Optimize() {
   const [pendingApproval, setPendingApproval] = useState<ApprovedMetadataUpdate | null>(null);
   const [applying, setApplying] = useState("");
   const [count, setCount] = useState(0);
+  const [onlyNeedsReview, setOnlyNeedsReview] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -161,6 +162,8 @@ export function Optimize() {
       ...current, [videoId]: { ...current[videoId]!, [key]: value },
     }));
   }
+  const reviewCount = videos.filter(needsMetadataReview).length;
+  const visibleVideos = onlyNeedsReview ? videos.filter(needsMetadataReview) : videos;
   return <section className="research-content" aria-label="Video optimization recommendations">
     <div className="studio-intro">
       <h2>Recommendations for your channel</h2>
@@ -186,8 +189,18 @@ export function Optimize() {
       to receive automatic recommendations. Public and competitor videos are excluded.</p>}
     {notice && <p role="status">{notice}</p>}
     {error && <p className="alert" role="alert">{error}</p>}
+    {!!videos.length && <section aria-label="Filter optimization recommendations">
+      <label className="field-note">
+        <input type="checkbox" checked={onlyNeedsReview}
+          onChange={e => setOnlyNeedsReview(e.target.checked)} />
+        Show only videos needing review ({reviewCount} of {videos.length} checked)
+      </label>
+      <p className="field-note">Based only on basic metadata checks, not a performance or ranking score. Filtering does not change drafts or approve edits.</p>
+    </section>}
+    {!loading && onlyNeedsReview && visibleVideos.length === 0 && count > 0 &&
+      <p role="status">No loaded videos currently have basic metadata gaps. Show all videos to review everything.</p>}
     <div className="optimize-feed">
-      {videos.map(video => {
+      {visibleVideos.map(video => {
         const advice = optimizationAdvice(video);
         const draft = drafts[video.videoId];
         const selected = proposals(video);

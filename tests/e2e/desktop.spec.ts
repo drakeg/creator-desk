@@ -718,6 +718,13 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await card.getByText("Edit recommendations for this video").click();
   await expect(card.getByLabel("Proposed title")).toHaveValue("Fixture upload");
   await card.getByLabel("Proposed title").fill("Fixture upload with an accurate title");
+  const reviewFilter = optimize.getByRole("checkbox", { name: /Show only videos needing review/ });
+  await expect(reviewFilter).not.toBeChecked();
+  await reviewFilter.check();
+  await expect(card).toHaveCount(1);
+  await expect(card.getByLabel("Proposed title")).toHaveValue("Fixture upload with an accurate title");
+  await reviewFilter.uncheck();
+  await expect(card.getByLabel("Proposed title")).toHaveValue("Fixture upload with an accurate title");
   await card.getByLabel("Proposed description").fill("UNAPPROVED DESCRIPTION");
   await card.getByLabel("Proposed tags (comma-separated)").fill("UNAPPROVED TAGS");
   await expect(card.getByRole("button", { name: "Review selected changes" })).toBeDisabled();
