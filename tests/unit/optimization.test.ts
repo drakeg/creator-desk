@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approvedMetadataUpdate, needsMetadataReview, optimizationAdvice, optimizationResult, optimizationRequest } from "../../src/shared/optimization";
+import { appendSuggestedTag, approvedMetadataUpdate, needsMetadataReview, optimizationAdvice, optimizationResult, optimizationRequest } from "../../src/shared/optimization";
 
 const record = optimizationResult.parse({
   videoId: "abcdefghijk", channelId: "UC1234567890123456789012",
@@ -21,6 +21,15 @@ describe("owner video metadata quality advice", () => {
     const result = optimizationAdvice({ ...record, tags: [] });
     expect(result.candidateTags).toContain("Solar Battery");
     expect(result.candidateTags).not.toContain("viral trending");
+  });
+  it("adds only selected tag phrases to an editable draft without duplicates", () => {
+    expect(appendSuggestedTag("RV solar", "Solar Battery")).toBe("RV solar, Solar Battery");
+    expect(appendSuggestedTag("RV solar, Solar Battery", "solar battery"))
+      .toBe("RV solar, Solar Battery");
+    expect(appendSuggestedTag("", "Solar Battery")).toBe("Solar Battery");
+    expect(appendSuggestedTag("RV solar, ", "Solar Battery")).toBe("RV solar, Solar Battery");
+    expect(appendSuggestedTag("RV solar", "<bad>")).toBe("RV solar");
+    expect(appendSuggestedTag("RV solar", "foo,bar")).toBe("RV solar");
   });
   it("offers a title-grounded description starter without changing the original", () => {
     const result = optimizationAdvice(record);

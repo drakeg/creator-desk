@@ -111,6 +111,15 @@ export function needsMetadataReview(data: OptimizationResult): boolean {
     tip.label !== "Review topic phrases from your title");
 }
 
+/** Keep existing draft tags untouched and add only the creator-selected candidate. */
+export function appendSuggestedTag(draft: string, suggested: string): string {
+  const candidate = suggested.trim();
+  if (!candidate || candidate.includes(",") || /[<>]/.test(candidate)) return draft;
+  const existing = draft.split(",").map(t => t.trim()).filter(Boolean);
+  if (existing.some(t => t.toLocaleLowerCase() === candidate.toLocaleLowerCase())) return draft;
+  return [...existing, candidate].join(", ");
+}
+
 export const optimizationField = z.enum(["title", "description", "tags"]);
 export type OptimizationField = z.infer<typeof optimizationField>;
 
