@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approvedMetadataUpdate, optimizationAdvice, optimizationResult, optimizationRequest } from "../../src/shared/optimization";
+import { approvedMetadataUpdate, needsMetadataReview, optimizationAdvice, optimizationResult, optimizationRequest } from "../../src/shared/optimization";
 
 const record = optimizationResult.parse({
   videoId: "abcdefghijk", channelId: "UC1234567890123456789012",
@@ -66,6 +66,18 @@ describe("owner video metadata quality advice", () => {
       description: "0:00 Introduction\n1:20 Arrival\n2:40 Highlights",
     });
     expect(result.tips.some(t => t.label === "Check chapter timestamps")).toBe(false);
+  });
+  it("filters only videos with rule-based metadata gaps without guessing performance", () => {
+    expect(needsMetadataReview(record)).toBe(true);
+    const complete = {
+      ...record,
+      title: "Our Guide to Practical RV Solar Power Systems",
+      description: "Our Guide to Practical RV Solar Power Systems explains the actual panel layout and our documented equipment installation steps, with measured safety notes.",
+      tags: ["RV Solar", "battery", "installation"],
+    };
+    expect(needsMetadataReview(complete)).toBe(false);
+    expect(optimizationAdvice(complete).tips[0]?.label).toBe("No basic metadata gaps detected");
+    expect(needsMetadataReview({ ...complete, description: "" })).toBe(true);
   });
   it("does not treat adequate basic metadata as proof of optimal reach", () => {
     const result = optimizationAdvice({ ...record, title: "A practical comparison of RV solar battery upgrades",
