@@ -104,6 +104,12 @@ export function optimizationAdvice(data: OptimizationResult): {
   return { tips, candidateTags, suggestedDescriptionOpening };
 }
 
+/** Simple local metadata triage, not a video performance score or ranking. */
+export function needsMetadataReview(data: OptimizationResult): boolean {
+  return optimizationAdvice(data).tips.some(tip =>
+    tip.label !== "No basic metadata gaps detected");
+}
+
 export const optimizationField = z.enum(["title", "description", "tags"]);
 export type OptimizationField = z.infer<typeof optimizationField>;
 
