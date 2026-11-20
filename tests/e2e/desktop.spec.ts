@@ -717,6 +717,9 @@ test("synchronizes daily analytics and uploads through the protected main-proces
   await expect(card.getByRole("img", { name: "Thumbnail unavailable" })).toBeVisible();
   await card.getByText("Edit recommendations for this video").click();
   await expect(card.getByLabel("Proposed title")).toHaveValue("Fixture upload");
+  await card.getByRole("button", { name: "Add tag Fixture upload to draft" }).click();
+  await expect(card.getByLabel("Proposed tags (comma-separated)")).toHaveValue(/Fixture upload/);
+  await expect(card.getByRole("checkbox", { name: "Approve tags change" })).not.toBeChecked();
   await card.getByLabel("Proposed title").fill("Fixture upload with an accurate title");
   const reviewFilter = optimize.getByRole("checkbox", { name: /Show only videos needing review/ });
   await expect(reviewFilter).not.toBeChecked();
