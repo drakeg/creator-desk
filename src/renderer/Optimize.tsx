@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import type { OptimizationResult, OptimizationField, ApprovedMetadataUpdate } from "../shared/optimization";
-import { appendSuggestedTag, needsMetadataReview, optimizationAdvice, selectedMetadata } from "../shared/optimization";
+import { appendSuggestedTag, draftFromOptimization, needsMetadataReview, optimizationAdvice, reconcileOptimizationDraft, selectedMetadata } from "../shared/optimization";
 import { ownedShortsUploads } from "../shared/owned-shorts";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 
-type Draft = { title: string; description: string; tags: string };
-const draftOf = (video: OptimizationResult): Draft => ({
-  title: video.title, description: video.description, tags: video.tags.join(", "),
-});
+type Draft = ReturnType<typeof draftFromOptimization>;
+const draftOf = draftFromOptimization;
 
 /** Owner-only, immediately loaded video recommendations; publishing requires a separate approval flow. */
 export function Optimize() {
@@ -148,10 +146,19 @@ export function Optimize() {
     try {
       const result = await window.desktop.optimizeVideo({ videoId });
       if (!result.ok) { setError(result.error.message); return; }
+      const previous = videos.find(item => item.videoId === videoId);
+      const existingDraft = drafts[videoId];
+      const reconciled = previous && existingDraft
+        ? reconcileOptimizationDraft(previous, result.value, existingDraft)
+        : { draft: draftOf(result.value), preserved: false, conflict: false };
       setVideos(current => current.map(item => item.videoId === videoId ? result.value : item));
-      setDrafts(current => ({ ...current, [videoId]: draftOf(result.value) }));
+      setDrafts(current => ({ ...current, [videoId]: reconciled.draft }));
+      // A new remote baseline invalidates any prior field selections or approval.
       setSelectedFields(current => ({ ...current, [videoId]: [] }));
       setPendingApproval(null);
+      if (reconciled.conflict) setNotice("YouTube metadata changed while your draft was edited. Your edits were preserved; compare them against the refreshed video before approving.");
+      else if (reconciled.preserved) setNotice("Recommendations refreshed. Your unfinished edits were preserved; reselect any fields you want to approve.");
+      else setNotice("Recommendations refreshed.");
     } catch {
       setError("Could not refresh this video. Its existing recommendations remain visible.");
     } finally { setRefreshing(""); }
