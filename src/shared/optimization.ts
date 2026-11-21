@@ -134,6 +134,31 @@ export function appendSuggestedTag(draft: string, suggested: string): string {
   return [...existing, candidate].join(", ");
 }
 
+/** Local edits survive a metadata refresh; the owner must explicitly review
+ * conflicts before approving any write. Nothing here persists or publishes. */
+export type OptimizationDraft = { title: string; description: string; tags: string };
+export const draftFromOptimization = (video: OptimizationResult): OptimizationDraft => ({
+  title: video.title, description: video.description, tags: video.tags.join(", "),
+});
+export function reconcileOptimizationDraft(
+  previous: OptimizationResult,
+  refreshed: OptimizationResult,
+  current: OptimizationDraft,
+): { draft: OptimizationDraft; preserved: boolean; conflict: boolean } {
+  const original = draftFromOptimization(previous);
+  const incoming = draftFromOptimization(refreshed);
+  const editedFields = (["title", "description", "tags"] as const).filter(
+    field => current[field] !== original[field],
+  );
+  if (!editedFields.length) return { draft: incoming, preserved: false, conflict: false };
+  const merged = { ...incoming };
+  for (const field of editedFields) merged[field] = current[field];
+  const conflict = editedFields.some(field =>
+    incoming[field] !== original[field] && incoming[field] !== current[field],
+  );
+  return { draft: merged, preserved: true, conflict };
+}
+
 export const optimizationField = z.enum(["title", "description", "tags"]);
 export type OptimizationField = z.infer<typeof optimizationField>;
 

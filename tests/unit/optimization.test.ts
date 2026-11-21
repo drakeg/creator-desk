@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appendSuggestedTag, approvedMetadataUpdate, needsMetadataReview, optimizationAdvice, optimizationResult, optimizationRequest } from "../../src/shared/optimization";
+import { appendSuggestedTag, approvedMetadataUpdate, draftFromOptimization, needsMetadataReview, optimizationAdvice, optimizationResult, optimizationRequest, reconcileOptimizationDraft } from "../../src/shared/optimization";
 
 const record = optimizationResult.parse({
   videoId: "abcdefghijk", channelId: "UC1234567890123456789012",
@@ -90,6 +90,31 @@ describe("owner video metadata quality advice", () => {
       ...record, description: "0:00 Intro\n9:59 Tour\n1:00:00 Wrap-up",
     });
     expect(result.tips.some(t => t.label === "Review chapter order")).toBe(false);
+  });
+  it("keeps unfinished description edits while refreshing other metadata", () => {
+    const draft = { ...draftFromOptimization(record), description: "Work in progress" };
+    const refreshed = { ...record, title: "Updated RV Solar Battery Upgrade",
+      fetchedAt: "2026-11-20T00:00:00Z" };
+    expect(reconcileOptimizationDraft(record, refreshed, draft)).toEqual({
+      draft: { ...draft, title: refreshed.title }, preserved: true, conflict: false,
+    });
+    expect(record.description).toBe("");
+  });
+  it("warns if the same metadata field changed locally and remotely", () => {
+    const draft = { ...draftFromOptimization(record), title: "My better title" };
+    const remote = { ...record, title: "Different current YouTube title" };
+    expect(reconcileOptimizationDraft(record, remote, draft)).toEqual({
+      draft, preserved: true, conflict: true,
+    });
+  });
+  it("updates untouched drafts to fresh values and handles matching remote edits", () => {
+    const remote = { ...record, description: "Remote updated description" };
+    expect(reconcileOptimizationDraft(record, remote, draftFromOptimization(record))).toEqual({
+      draft: draftFromOptimization(remote), preserved: false, conflict: false,
+    });
+    expect(reconcileOptimizationDraft(record, remote, {
+      ...draftFromOptimization(record), description: "Remote updated description",
+    }).conflict).toBe(false);
   });
   it("filters only videos with rule-based metadata gaps without guessing performance", () => {
     expect(needsMetadataReview(record)).toBe(true);
