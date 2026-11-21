@@ -70,3 +70,8 @@ jobs:
           echo "All applicable checks passed for owner PR #$pr at $RUN_SHA."
           gh api -X PUT "repos/$REPO/pulls/$pr/merge" \
             -f merge_method=squash -f sha="$RUN_SHA"
+          # GITHUB_TOKEN-created merges do not emit downstream push workflows.
+          # Explicit workflow_dispatch is permitted and preserves main-branch
+          # release verification/publishing and badge validation.
+          gh workflow run releases.yml --repo "$REPO" --ref main
+          gh workflow run readme-badges.yml --repo "$REPO" --ref main
