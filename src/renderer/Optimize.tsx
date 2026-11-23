@@ -150,6 +150,11 @@ export function Optimize() {
       if (!response.ok) { setError(response.error.message); return; }
       setVideos(current => current.map(v => v.videoId === video.videoId ? response.value : v));
       setDrafts(current => ({ ...current, [video.videoId]: draftOf(response.value) }));
+      // A published draft is no longer an unfinished local draft.
+      const removed = await window.desktop.removeOptimizationDraft({
+        videoId: video.videoId, channelId: video.channelId,
+      });
+      if (removed.ok) setSavedDrafts(current => ({ ...current, [video.videoId]: false }));
       setSelectedFields(current => ({ ...current, [video.videoId]: [] }));
       setNotice(`YouTube confirmed and saved the approved changes to "${response.value.title}".`);
     } catch {
