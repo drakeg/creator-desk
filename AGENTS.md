@@ -19,7 +19,7 @@ This repository follows [Mad Mallard Repository Standards](https://github.com/dr
 - Review updates as part of each affected normal development PR rather than opening a standalone PR for every routine version bump.
 
 ## Contributing with coding agents
-Agents may propose and implement focused changes, tests and documentation through ordinary pull requests. Record enhancements in the current Sprint only when in scope; otherwise create or link a backlog issue. Break/fix work can be prioritized immediately. Do not silently merge, claim green CI without verification, or publish unreviewed YouTube metadata changes.
+Agents may propose and implement focused changes, tests and documentation through ordinary pull requests. Record enhancements in the current Sprint only when in scope; otherwise create or link a backlog issue. Break/fix work can be prioritized immediately. Owner-authored, non-draft PRs from branches in this repository targeting `main` are authorized for automated squash merging by `.github/workflows/merge-green-owner-prs.yml` **only after** all four native desktop build checks and applicable badge validation succeed on the unchanged PR head. The workflow must not bypass GitHub protection rules, execute untrusted PR code in its privileged job, or merge failed/incomplete CI. It triggers main-branch verification explicitly after a token-initiated merge. Other authors' PRs remain manual. Never claim green CI without verification or publish unreviewed YouTube metadata changes.
 
 ## Agile, releases, security and business validation
 
