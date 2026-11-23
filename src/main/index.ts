@@ -28,7 +28,7 @@ import { saveChange, changeId, officialYouTubeSource } from "../shared/youtube-c
 import { YouTubeChanges } from "./youtube/change-tracker";
 import { dailySyncInput } from "../shared/youtube";
 import { researchInput } from "../shared/research";
-import { optimizationRequest, approvedMetadataUpdate } from "../shared/optimization";
+import { optimizationRequest, approvedMetadataUpdate, savedOptimizationDraftRequest, saveOptimizationDraftRequest } from "../shared/optimization";
 import { readCommentInput } from "../shared/comments";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
@@ -170,6 +170,12 @@ function configureIPC() {
   handle("applyApprovedMetadata", approvedMetadataUpdate, (input) => youtube.applyApprovedMetadata(input));
   handle("getOwnVideoThumbnail", optimizationRequest, (input) => youtube.ownVideoThumbnail(input));
   handle("optimizeVideo", optimizationRequest, (input) => youtube.optimizeVideo(input));
+  handle("getOptimizationDraft", savedOptimizationDraftRequest, (input) =>
+    store.getOptimizationDraft(input.videoId, input.channelId));
+  handle("saveOptimizationDraft", saveOptimizationDraftRequest, (input) =>
+    store.saveOptimizationDraft(input.videoId, input.channelId, input.saved));
+  handle("removeOptimizationDraft", savedOptimizationDraftRequest, (input) =>
+    store.saveOptimizationDraft(input.videoId, input.channelId, null));
   handle("getCommentsInbox", z.undefined(), () => youtube.commentsInbox());
   handle("refreshComments", z.undefined(), () => youtube.refreshComments());
   handle("markCommentRead", readCommentInput, (input) => youtube.markCommentRead(input));
