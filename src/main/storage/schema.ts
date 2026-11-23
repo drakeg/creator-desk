@@ -6,6 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import { channelSnapshot, historyPointer } from "../../shared/youtube";
 import { appearance, CoreError } from "../../shared/contracts";
+import { savedOptimizationDraft } from "../../shared/optimization";
 import { parsedReport, reportSummary } from "../../shared/analytics";
 export const CREATE_REPORTS = `CREATE TABLE reports (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(id), metadata TEXT NOT NULL, payload TEXT NOT NULL, fingerprint TEXT NOT NULL) STRICT;`;
 export const SCHEMA_VERSION = 2;
@@ -71,6 +72,14 @@ export function checkDatabase(db: DatabaseSync) {
     )
       throw new CoreError("INVALID_BACKUP", "Invalid backup settings.");
     const value: unknown = JSON.parse(s.value);
+    if (s.key.startsWith("optimization-draft:")) {
+      const match = /^optimization-draft:([a-f0-9-]{36}):([a-zA-Z0-9_-]{11})$/.exec(s.key);
+      if (!match || !workspaces.some(w => w.id === match[1]))
+        throw new CoreError("INVALID_BACKUP", "A saved optimization draft has an invalid workspace.");
+      const draft = savedOptimizationDraft.parse(value);
+      if (draft.original.videoId !== match[2])
+        throw new CoreError("INVALID_BACKUP", "A saved optimization draft has the wrong video.");
+    }
     if (s.key.startsWith("youtube-snapshot-")) {
       const workspaceId = s.key.slice("youtube-snapshot-".length);
       if (!workspaces.some((w) => w.id === workspaceId))
