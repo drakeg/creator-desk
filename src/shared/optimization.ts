@@ -159,6 +159,27 @@ export function reconcileOptimizationDraft(
   return { draft: merged, preserved: true, conflict };
 }
 
+export const savedOptimizationDraft = z.object({
+  original: optimizationResult,
+  draft: z.object({
+    title: z.string().max(100),
+    description: z.string().max(5000),
+    tags: z.string().max(1200),
+  }).strict(),
+}).strict();
+export type SavedOptimizationDraft = z.infer<typeof savedOptimizationDraft>;
+export const savedOptimizationDraftRequest = z.object({
+  videoId: optimizationRequest.shape.videoId,
+  channelId: optimizationResult.shape.channelId,
+}).strict();
+export const saveOptimizationDraftRequest = savedOptimizationDraftRequest.extend({
+  saved: savedOptimizationDraft,
+}).strict().refine(input =>
+  input.videoId === input.saved.original.videoId &&
+  input.channelId === input.saved.original.channelId,
+  "Draft video and channel must match.");
+export type SavedOptimizationDraftRequest = z.infer<typeof savedOptimizationDraftRequest>;
+export type SaveOptimizationDraftRequest = z.infer<typeof saveOptimizationDraftRequest>;
 export const optimizationField = z.enum(["title", "description", "tags"]);
 export type OptimizationField = z.infer<typeof optimizationField>;
 
