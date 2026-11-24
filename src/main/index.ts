@@ -28,7 +28,7 @@ import { saveChange, changeId, officialYouTubeSource } from "../shared/youtube-c
 import { YouTubeChanges } from "./youtube/change-tracker";
 import { dailySyncInput } from "../shared/youtube";
 import { researchInput } from "../shared/research";
-import { optimizationRequest, approvedMetadataUpdate } from "../shared/optimization";
+import { optimizationRequest, approvedMetadataUpdate, savedOptimizationDraftRequest, saveOptimizationDraftRequest } from "../shared/optimization";
 import { readCommentInput } from "../shared/comments";
 import { AI } from "./shorts/ai";
 import { Shorts } from "./shorts/service";
@@ -170,6 +170,18 @@ function configureIPC() {
   handle("applyApprovedMetadata", approvedMetadataUpdate, (input) => youtube.applyApprovedMetadata(input));
   handle("getOwnVideoThumbnail", optimizationRequest, (input) => youtube.ownVideoThumbnail(input));
   handle("optimizeVideo", optimizationRequest, (input) => youtube.optimizeVideo(input));
+  handle("getOptimizationDraft", savedOptimizationDraftRequest, (input) => {
+    const { videoId, channelId } = savedOptimizationDraftRequest.parse(input);
+    return store.getOptimizationDraft(videoId, channelId);
+  });
+  handle("saveOptimizationDraft", saveOptimizationDraftRequest, (input) => {
+    const { videoId, channelId, saved } = saveOptimizationDraftRequest.parse(input);
+    return store.saveOptimizationDraft(videoId, channelId, saved);
+  });
+  handle("removeOptimizationDraft", savedOptimizationDraftRequest, (input) => {
+    const { videoId, channelId } = savedOptimizationDraftRequest.parse(input);
+    return store.saveOptimizationDraft(videoId, channelId, null);
+  });
   handle("getCommentsInbox", z.undefined(), () => youtube.commentsInbox());
   handle("refreshComments", z.undefined(), () => youtube.refreshComments());
   handle("markCommentRead", readCommentInput, (input) => youtube.markCommentRead(input));

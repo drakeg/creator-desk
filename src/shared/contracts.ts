@@ -71,6 +71,9 @@ export interface DesktopCore {
   applyApprovedMetadata(input: import("./optimization").ApprovedMetadataUpdate): Promise<Result<import("./optimization").OptimizationResult>>;
   getOwnVideoThumbnail(input: { videoId: string }): Promise<Result<string | null>>;
   optimizeVideo(input: { videoId: string }): Promise<Result<import("./optimization").OptimizationResult>>;
+  getOptimizationDraft(input: import("./optimization").SavedOptimizationDraftRequest): Promise<Result<import("./optimization").SavedOptimizationDraft | null>>;
+  saveOptimizationDraft(input: import("./optimization").SaveOptimizationDraftRequest): Promise<Result<null>>;
+  removeOptimizationDraft(input: import("./optimization").SavedOptimizationDraftRequest): Promise<Result<null>>;
   getCommentsInbox(): Promise<Result<import("./comments").InboxSnapshot | null>>;
   refreshComments(): Promise<Result<import("./comments").InboxSnapshot>>;
   markCommentRead(input: { id: string }): Promise<Result<import("./comments").InboxSnapshot>>;

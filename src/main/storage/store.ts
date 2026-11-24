@@ -18,6 +18,7 @@ import {
 export { checkDatabase, SCHEMA_VERSION } from "./schema";
 import { checkDatabase, SCHEMA_VERSION, CREATE_REPORTS } from "./schema";
 import { migrateV1 } from "./migrations";
+import { savedOptimizationDraft, type SavedOptimizationDraft } from "../../shared/optimization";
 const workspaceSchema = z.object({
   id: z.uuid(),
   name: z.string(),
@@ -172,6 +173,37 @@ export class Store {
     const { collapsed } = sidebarInput.parse(input);
     this.transaction(() => this.put("sidebarCollapsed", collapsed));
     return this.state();
+  }
+  getOptimizationDraft(videoId: string, channelId: string): SavedOptimizationDraft | null {
+    const workspaceId = this.state().selectedWorkspaceId;
+    if (!workspaceId) return null;
+    const key = `optimization-draft:${workspaceId}:${videoId}`;
+    const saved = this.setting<unknown>(key, null);
+    if (!saved) return null;
+    const parsed = savedOptimizationDraft.parse(saved);
+    return parsed.original.videoId === videoId && parsed.original.channelId === channelId
+      ? parsed : null;
+  }
+  saveOptimizationDraft(videoId: string, channelId: string, saved: SavedOptimizationDraft | null) {
+    const workspaceId = this.state().selectedWorkspaceId;
+    if (!workspaceId) throw new CoreError("NOT_FOUND", "Choose a channel workspace first.");
+    const key = `optimization-draft:${workspaceId}:${videoId}`;
+    if (saved && (saved.original.videoId !== videoId || saved.original.channelId !== channelId))
+      throw new CoreError("INVALID_INPUT", "Draft video or channel mismatch.");
+    const value = saved ? JSON.stringify(savedOptimizationDraft.parse(saved)) : null;
+    if (value && Buffer.byteLength(value, "utf8") > 9500)
+      throw new CoreError("INVALID_INPUT", "This draft is too large to save locally.");
+    return this.transaction(() => {
+      if (saved) {
+        const total = Number(this.db.prepare(
+          "SELECT count(*) AS count FROM settings WHERE key LIKE ? AND key != ?"
+        ).get(`optimization-draft:${workspaceId}:%`, key)?.count ?? 0);
+        if (total >= 8) throw new CoreError("INVALID_INPUT", "Maximum eight saved optimization drafts per workspace.");
+        this.db.prepare("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+          .run(key, value!);
+      } else this.db.prepare("DELETE FROM settings WHERE key=?").run(key);
+      return null;
+    });
   }
   saveWindowBounds(bounds: { width: number; height: number }) {
     this.transaction(() => this.put("windowBounds", bounds));

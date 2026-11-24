@@ -33,7 +33,8 @@ Build a usable, privacy-aware **vidIQ alternative** for creators and small conte
 
 - Distinguish factual metadata observations from title/description proposals and missing context.
 - Preserve unsubmitted local draft edits when refreshing video metadata; warn when the same field changed remotely, and invalidate previous field approvals (current feature slice).
-- Add durable local save/restore of reviewed drafts with explicit dirty/conflict markers, bounded storage and test coverage (still outstanding).
+- Save/restore individual owner-video drafts in workspace-scoped SQLite settings with explicit Save/Remove actions, bounded to eight videos per workspace; compare saved baseline against current metadata before showing edits (current feature slice).
+- Add automatic draft autosave, per-video dirty indicators and richer conflict-resolution UX (remaining future slice).
 - Provide per-video progress states and prioritization, with honest unknown metrics.
 - Verify via fake/owned metadata fixtures and installed Electron tests. No autonomous YouTube writes.
 - Validate first pilot usability before expanding API cost or adding paid inference.

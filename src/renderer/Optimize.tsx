@@ -22,6 +22,7 @@ export function Optimize() {
   const [applying, setApplying] = useState("");
   const [count, setCount] = useState(0);
   const [onlyNeedsReview, setOnlyNeedsReview] = useState(false);
+  const [savedDrafts, setSavedDrafts] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let active = true;
@@ -47,8 +48,23 @@ export function Optimize() {
           const result = await window.desktop.optimizeVideo({ videoId: item.id });
           if (!active) return;
           if (result.ok) {
+            const saved = await window.desktop.getOptimizationDraft({
+              videoId: result.value.videoId, channelId: result.value.channelId,
+            });
+            if (!active) return;
+            const restored = saved.ok && saved.value
+              ? reconcileOptimizationDraft(saved.value.original, result.value, saved.value.draft)
+              : null;
             setVideos(current => [...current, result.value]);
-            setDrafts(current => ({ ...current, [item.id]: draftOf(result.value) }));
+            setDrafts(current => ({
+              ...current, [item.id]: restored?.draft ?? draftOf(result.value),
+            }));
+            if (saved.ok && saved.value) {
+              setSavedDrafts(current => ({ ...current, [item.id]: true }));
+              if (restored?.conflict) setNotice("A saved draft conflicts with newer YouTube metadata. Review before approval.");
+            } else if (!saved.ok) {
+              setNotice("Saved drafts could not be read. Current YouTube metadata is shown.");
+            }
             void window.desktop.getOwnVideoThumbnail({ videoId: item.id })
               .then(photo => {
                 if (active && photo.ok && photo.value)
@@ -134,6 +150,11 @@ export function Optimize() {
       if (!response.ok) { setError(response.error.message); return; }
       setVideos(current => current.map(v => v.videoId === video.videoId ? response.value : v));
       setDrafts(current => ({ ...current, [video.videoId]: draftOf(response.value) }));
+      // A published draft is no longer an unfinished local draft.
+      const removed = await window.desktop.removeOptimizationDraft({
+        videoId: video.videoId, channelId: video.channelId,
+      });
+      if (removed.ok) setSavedDrafts(current => ({ ...current, [video.videoId]: false }));
       setSelectedFields(current => ({ ...current, [video.videoId]: [] }));
       setNotice(`YouTube confirmed and saved the approved changes to "${response.value.title}".`);
     } catch {
@@ -168,6 +189,29 @@ export function Optimize() {
     setDrafts(current => ({
       ...current, [videoId]: { ...current[videoId]!, [key]: value },
     }));
+  }
+  async function saveDraft(video: OptimizationResult) {
+    const draft = drafts[video.videoId];
+    if (!draft) return;
+    try {
+      const saved = await window.desktop.saveOptimizationDraft({
+        videoId: video.videoId, channelId: video.channelId,
+        saved: { original: video, draft },
+      });
+      if (!saved.ok) { setError(saved.error.message); return; }
+      setSavedDrafts(current => ({ ...current, [video.videoId]: true }));
+      setNotice("Draft saved locally. Publishing still requires separate approval.");
+    } catch { setError("Could not save this draft."); }
+  }
+  async function discardSavedDraft(video: OptimizationResult) {
+    try {
+      const removed = await window.desktop.removeOptimizationDraft({
+        videoId: video.videoId, channelId: video.channelId,
+      });
+      if (!removed.ok) { setError(removed.error.message); return; }
+      setSavedDrafts(current => ({ ...current, [video.videoId]: false }));
+      setNotice("Saved copy removed. Your current unsaved edits remain visible.");
+    } catch { setError("Could not remove saved draft."); }
   }
   const reviewCount = videos.filter(needsMetadataReview).length;
   const visibleVideos = onlyNeedsReview ? videos.filter(needsMetadataReview) : videos;
@@ -275,6 +319,12 @@ export function Optimize() {
                   <textarea rows={3} value={draft.tags}
                     onChange={e => edit(video.videoId, "tags", e.target.value)}/>
                 </label>
+                <div className="youtube-actions">
+                  <button type="button" className="button secondary"
+                    onClick={() => void saveDraft(video)}>Save draft locally</button>
+                  {savedDrafts[video.videoId] && <button type="button" className="button secondary"
+                    onClick={() => void discardSavedDraft(video)}>Remove saved copy</button>}
+                </div>
                 <button type="button" className="button secondary" onClick={() => {
                   void navigator.clipboard.writeText(
                     `Title: ${draft.title}\n\nDescription:\n${draft.description}\n\nTags: ${draft.tags}`,
