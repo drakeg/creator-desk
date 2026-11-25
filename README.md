@@ -1,5 +1,8 @@
 # Creator Desk 0.15.1 (development)
 
+[![License](https://img.shields.io/github/license/drakeg/creator-desk)](https://github.com/drakeg/creator-desk/blob/main/LICENSE)
+
+
 <!-- badges:start -->
 [![TypeScript](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdrakeg%2Fcreator-desk%2Fmain%2Fpackage.json&query=%24.devDependencies.typescript&label=TypeScript&logo=typescript&logoColor=white&color=3178C6)](https://github.com/drakeg/creator-desk/blob/main/package.json) [![React](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdrakeg%2Fcreator-desk%2Fmain%2Fpackage.json&query=%24.dependencies.react&label=React&logo=react&logoColor=white&color=149ECA)](https://github.com/drakeg/creator-desk/blob/main/package.json) [![Electron](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdrakeg%2Fcreator-desk%2Fmain%2Fpackage.json&query=%24.devDependencies.electron&label=Electron&logo=electron&logoColor=white&color=47848F)](https://github.com/drakeg/creator-desk/blob/main/package.json) [![Vite](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdrakeg%2Fcreator-desk%2Fmain%2Fpackage.json&query=%24.devDependencies.vite&label=Vite&logo=vite&logoColor=white&color=646CFF)](https://github.com/drakeg/creator-desk/blob/main/package.json) [![Node.js 22.23.5](https://img.shields.io/badge/Node.js-22.23.5-339933?logo=nodedotjs&logoColor=white)](https://github.com/drakeg/creator-desk/blob/main/.github/workflows/releases.yml) [![SQLite](https://img.shields.io/badge/SQLite-Node%20built--in-003B57?logo=sqlite&logoColor=white)](https://github.com/drakeg/creator-desk/blob/main/src/main/storage/store.ts)
 
