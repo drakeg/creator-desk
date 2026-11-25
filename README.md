@@ -5,7 +5,7 @@
 
 [![Desktop CI, tests and security audit](https://github.com/drakeg/creator-desk/actions/workflows/releases.yml/badge.svg?branch=main)](https://github.com/drakeg/creator-desk/actions/workflows/releases.yml) [![Latest release](https://img.shields.io/github/v/release/drakeg/creator-desk?label=release)](https://github.com/drakeg/creator-desk/releases/latest) [![Open issues](https://img.shields.io/github/issues/drakeg/creator-desk)](https://github.com/drakeg/creator-desk/issues) [![Open PRs](https://img.shields.io/github/issues-pr/drakeg/creator-desk)](https://github.com/drakeg/creator-desk/pulls)
 
-[![Contributing](https://img.shields.io/badge/Contributing-guide-596579?logo=github)](https://github.com/drakeg/creator-desk/blob/main/AGENTS.md) [![Platforms](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20Linux-596579)](https://github.com/drakeg/creator-desk/blob/main/.github/workflows/releases.yml)
+[![Contributing](https://img.shields.io/badge/Contributing-guide-596579?logo=github)](https://github.com/drakeg/creator-desk/blob/main/AGENTS.md) [![Platforms](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20Linux-596579)](https://github.com/drakeg/creator-desk/blob/main/.github/workflows/releases.yml) [![License](https://img.shields.io/github/license/drakeg/creator-desk)](https://github.com/drakeg/creator-desk/blob/main/LICENSE)
 <!-- badges:end -->
 
 
