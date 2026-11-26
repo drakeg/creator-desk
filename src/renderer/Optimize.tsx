@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { OptimizationResult, OptimizationField, ApprovedMetadataUpdate } from "../shared/optimization";
-import { appendSuggestedTag, draftFromOptimization, needsMetadataReview, optimizationAdvice, reconcileOptimizationDraft, selectedMetadata } from "../shared/optimization";
+import { appendSuggestedTag, changedOptimizationFields, draftFromOptimization, hasUnstoredOptimizationChanges, needsMetadataReview, optimizationAdvice, reconcileOptimizationDraft, selectedMetadata } from "../shared/optimization";
 import { ownedShortsUploads } from "../shared/owned-shorts";
 import type { ChannelHistory, YouTubeState } from "../shared/youtube";
 
@@ -23,6 +23,7 @@ export function Optimize() {
   const [count, setCount] = useState(0);
   const [onlyNeedsReview, setOnlyNeedsReview] = useState(false);
   const [savedDrafts, setSavedDrafts] = useState<Record<string, boolean>>({});
+  const [savedSnapshots, setSavedSnapshots] = useState<Record<string, Draft>>({});
 
   useEffect(() => {
     let active = true;
@@ -61,6 +62,7 @@ export function Optimize() {
             }));
             if (saved.ok && saved.value) {
               setSavedDrafts(current => ({ ...current, [item.id]: true }));
+              setSavedSnapshots(current => ({ ...current, [item.id]: saved.value!.draft }));
               if (restored?.conflict) setNotice("A saved draft conflicts with newer YouTube metadata. Review before approval.");
             } else if (!saved.ok) {
               setNotice("Saved drafts could not be read. Current YouTube metadata is shown.");
@@ -150,6 +152,7 @@ export function Optimize() {
       if (!response.ok) { setError(response.error.message); return; }
       setVideos(current => current.map(v => v.videoId === video.videoId ? response.value : v));
       setDrafts(current => ({ ...current, [video.videoId]: draftOf(response.value) }));
+      setSavedSnapshots(current => ({ ...current, [video.videoId]: draftOf(response.value) }));
       // A published draft is no longer an unfinished local draft.
       const removed = await window.desktop.removeOptimizationDraft({
         videoId: video.videoId, channelId: video.channelId,
@@ -200,6 +203,7 @@ export function Optimize() {
       });
       if (!saved.ok) { setError(saved.error.message); return; }
       setSavedDrafts(current => ({ ...current, [video.videoId]: true }));
+      setSavedSnapshots(current => ({ ...current, [video.videoId]: { ...draft } }));
       setNotice("Draft saved locally. Publishing still requires separate approval.");
     } catch { setError("Could not save this draft."); }
   }
@@ -210,6 +214,7 @@ export function Optimize() {
       });
       if (!removed.ok) { setError(removed.error.message); return; }
       setSavedDrafts(current => ({ ...current, [video.videoId]: false }));
+      setSavedSnapshots(current => ({ ...current, [video.videoId]: draftOf(video) }));
       setNotice("Saved copy removed. Your current unsaved edits remain visible.");
     } catch { setError("Could not remove saved draft."); }
   }
@@ -254,6 +259,10 @@ export function Optimize() {
       {visibleVideos.map(video => {
         const advice = optimizationAdvice(video);
         const draft = drafts[video.videoId];
+        const editedFields = draft ? changedOptimizationFields(video, draft) : [];
+        const savedSnapshot = savedDrafts[video.videoId]
+          ? savedSnapshots[video.videoId] : draftOf(video);
+        const unsavedChanges = !!draft && hasUnstoredOptimizationChanges(draft, savedSnapshot);
         const selected = proposals(video);
         const hasSelectedChanges = !!selected && selected.approvedFields.some(field =>
           field === "tags" ? JSON.stringify(selected.proposed.tags) !== JSON.stringify(video.tags)
@@ -278,6 +287,16 @@ export function Optimize() {
             <h3>{video.title}</h3>
             <p className="field-note">Checked {new Date(video.fetchedAt).toLocaleString()}.
               Suggestions are content checks, not guaranteed growth.</p>
+            {draft && <p className="field-note" role="status">
+              {editedFields.length
+                ? `Local proposed changes: ${editedFields.join(", ")}. `
+                : "No proposed changes against current YouTube metadata. "}
+              {unsavedChanges
+                ? "Unsaved since the last local save."
+                : savedDrafts[video.videoId]
+                  ? "Local copy saved."
+                  : "No unsaved local draft."}
+            </p>}
             <ul>{advice.tips.map((tip, i) => <li key={i}>
               <strong>{tip.label}</strong> ({tip.field}): {tip.reason}
             </li>)}</ul>
@@ -311,14 +330,26 @@ export function Optimize() {
                   <textarea rows={2} maxLength={100} value={draft.title}
                     onChange={e => edit(video.videoId, "title", e.target.value)}/>
                 </label>
+                {editedFields.includes("title") && <button type="button" className="button secondary"
+                  disabled={!!applying} onClick={() => edit(video.videoId, "title", video.title)}>
+                  Restore current YouTube title
+                </button>}
                 <label>Proposed description
                   <textarea rows={5} maxLength={5000} value={draft.description}
                     onChange={e => edit(video.videoId, "description", e.target.value)}/>
                 </label>
+                {editedFields.includes("description") && <button type="button" className="button secondary"
+                  disabled={!!applying} onClick={() => edit(video.videoId, "description", video.description)}>
+                  Restore current YouTube description
+                </button>}
                 <label>Proposed tags (comma-separated)
                   <textarea rows={3} value={draft.tags}
                     onChange={e => edit(video.videoId, "tags", e.target.value)}/>
                 </label>
+                {editedFields.includes("tags") && <button type="button" className="button secondary"
+                  disabled={!!applying} onClick={() => edit(video.videoId, "tags", video.tags.join(", "))}>
+                  Restore current YouTube tags
+                </button>}
                 <div className="youtube-actions">
                   <button type="button" className="button secondary"
                     onClick={() => void saveDraft(video)}>Save draft locally</button>
