@@ -140,6 +140,26 @@ export type OptimizationDraft = { title: string; description: string; tags: stri
 export const draftFromOptimization = (video: OptimizationResult): OptimizationDraft => ({
   title: video.title, description: video.description, tags: video.tags.join(", "),
 });
+/** List exact local metadata differences. Does not approve or publish changes. */
+export function changedOptimizationFields(
+  video: OptimizationResult,
+  draft: OptimizationDraft,
+): ("title" | "description" | "tags")[] {
+  const fields: ("title" | "description" | "tags")[] = [];
+  if (draft.title.trim() !== video.title) fields.push("title");
+  if (draft.description !== video.description) fields.push("description");
+  if (JSON.stringify(draft.tags.split(",").map(tag => tag.trim()).filter(Boolean)) !==
+      JSON.stringify(video.tags)) fields.push("tags");
+  return fields;
+}
+/** Detect local edits after the last explicit save, including whitespace edits. */
+export function hasUnstoredOptimizationChanges(
+  draft: OptimizationDraft,
+  snapshot: OptimizationDraft,
+): boolean {
+  return draft.title !== snapshot.title ||
+    draft.description !== snapshot.description || draft.tags !== snapshot.tags;
+}
 export function reconcileOptimizationDraft(
   previous: OptimizationResult,
   refreshed: OptimizationResult,
