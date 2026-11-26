@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appendSuggestedTag, approvedMetadataUpdate, draftFromOptimization, needsMetadataReview, optimizationAdvice, optimizationResult, optimizationRequest, reconcileOptimizationDraft } from "../../src/shared/optimization";
+import { appendSuggestedTag, approvedMetadataUpdate, changedOptimizationFields, draftFromOptimization, hasUnstoredOptimizationChanges, needsMetadataReview, optimizationAdvice, optimizationResult, optimizationRequest, reconcileOptimizationDraft } from "../../src/shared/optimization";
 
 const record = optimizationResult.parse({
   videoId: "abcdefghijk", channelId: "UC1234567890123456789012",
@@ -115,6 +115,22 @@ describe("owner video metadata quality advice", () => {
     expect(reconcileOptimizationDraft(record, remote, {
       ...draftFromOptimization(record), description: "Remote updated description",
     }).conflict).toBe(false);
+  });
+  it("identifies changed metadata fields without marking unchanged tags or trims as edits", () => {
+    const original = draftFromOptimization(record);
+    expect(changedOptimizationFields(record, original)).toEqual([]);
+    expect(changedOptimizationFields(record, { ...original, title: `  ${record.title}  ` })).toEqual([]);
+    expect(changedOptimizationFields(record, { ...original, tags: "RV solar, rv solar, " })).toEqual([]);
+    expect(changedOptimizationFields(record, {
+      ...original, description: "An accurate summary", tags: "RV solar",
+    })).toEqual(["description", "tags"]);
+  });
+  it("tracks edits after an explicit local save without publishing", () => {
+    const saved = draftFromOptimization(record);
+    expect(hasUnstoredOptimizationChanges(saved, saved)).toBe(false);
+    expect(hasUnstoredOptimizationChanges({ ...saved, title: "Edited title" }, saved)).toBe(true);
+    expect(hasUnstoredOptimizationChanges({ ...saved, tags: saved.tags + " " }, saved)).toBe(true);
+    expect(hasUnstoredOptimizationChanges({ ...saved }, { ...saved })).toBe(false);
   });
   it("filters only videos with rule-based metadata gaps without guessing performance", () => {
     expect(needsMetadataReview(record)).toBe(true);
