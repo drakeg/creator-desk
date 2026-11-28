@@ -4,7 +4,7 @@ This is a short, human-readable prioritization view. [GitHub Issues](https://git
 
 | Priority | Outcome / problem | State and link | Customer value / acceptance |
 | --- | --- | --- | --- |
-| P0 | Trustworthy CI and dependency risk | [#105](https://github.com/drakeg/creator-desk/issues/105), current security follow-up | High-severity audit gate active; fix supported vulnerabilities, no silent waiver |
+| P0 | Diagnose comment refresh API denials without guessing the cause | Fix in current PR; live Google-account reproduction pending | Show safe, reason-specific 403 guidance for permissions, quota, disabled API and disabled comments; preserve cached inbox |\n| P0 | Trustworthy CI and dependency risk | [#105](https://github.com/drakeg/creator-desk/issues/105), current security follow-up | High-severity audit gate active; fix supported vulnerabilities, no silent waiver |
 | P0 | Verified README and central standards adoption | [PR #104](https://github.com/drakeg/creator-desk/pull/104), in review | Live badges and code-backed versions; docs/validation/agent rules |
 | P0 | Apply **only** owner-selected YouTube metadata changes | [#89](https://github.com/drakeg/creator-desk/issues/89), merged implementation, acceptance still open | Per-field selection, fresh remote check, audit, no speculative writes |
 | P0 | Add title-derived candidate tags into drafts without approval | [PR #99](https://github.com/drakeg/creator-desk/pull/99), in review | Individual add action; never implicitly check approval or publish |
