@@ -31,7 +31,7 @@ import { History, historicalDaily } from "./history";
 import { Reports } from "../imports/reports";
 import { dailyReport, uploadReport } from "./report-data";
 import { dailySyncInput, type DailySyncInput } from "../../shared/youtube";
-import { googleJSON, type Transport } from "./http";
+import { GoogleError, googleJSON, type Transport } from "./http";
 import { researchInput, searchResponse, videosResponse, combineResearchResults } from "../../shared/research";
 import { optimizationRequest, optimizationResult, approvedMetadataUpdate } from "../../shared/optimization";
 import { inboxSnapshot, readCommentInput, threadPage, parseThreads } from "../../shared/comments";
@@ -727,8 +727,22 @@ export class YouTube {
         order: "time", maxResults: "50",
         ...(next ? { pageToken: next } : {}),
       }).toString();
-      const raw = await googleJSON(url.href,
-        { headers: { Authorization: `Bearer ${token}` } }, this.transport);
+      let raw: unknown;
+      try {
+        raw = await googleJSON(url.href,
+          { headers: { Authorization: `Bearer ${token}` } }, this.transport);
+      } catch (error) {
+        // Only retry a denied read if the owner already opted in to the
+        // separate, broader editing grant for this very channel. Never
+        // prompt for or silently request elevated permissions.
+        const denied = error instanceof GoogleError && error.status === 403 &&
+          ["forbidden", "insufficientpermissions", "permission_denied"]
+            .includes(error.reason.toLowerCase());
+        if (!denied || !this.vault.has(editKey(workspace))) throw error;
+        const alternate = await this.editingAccess(workspace, channelId);
+        raw = await googleJSON(url.href,
+          { headers: { Authorization: `Bearer ${alternate}` } }, this.transport);
+      }
       const response = threadPage.safeParse(raw);
       if (!response.success)
         throw new CoreError("REMOTE_ERROR", "YouTube returned invalid comment data. Your inbox was preserved.");

@@ -250,7 +250,7 @@ it("saves and deduplicates API daily reports, includes them in backups and prese
   fail = true;
   await expect(
     youtube.syncDaily({ startDate: "2026-01-01", endDate: "2026-01-02" }),
-  ).rejects.toThrow("Google denied");
+  ).rejects.toThrow("HTTP 403");
   expect(new Reports(store).dashboard({}).reports).toHaveLength(1);
   expect(vault.has(`youtube-${store.state().selectedWorkspaceId}`)).toBe(true);
 });
@@ -601,4 +601,59 @@ it("sets up reach, waits honestly, downloads reports and reopens cached results 
   expect(youtube.reach({ videoId: "abcdefghijk" }).ctr).toBe(10);
   youtube.disconnect();
   expect(youtube.reach({}).impressions).toBe(1000);
+});
+
+it("refreshes comments with a separately consented channel grant after a read-only 403", async () => {
+  const requests: string[] = [];
+  const { youtube, vault, store } = setup(async (url, init) => {
+    if (url.includes("/token")) return Response.json({
+      access_token: "fresh", expires_in: 3600, token_type: "Bearer",
+    });
+    if (url.includes("/commentThreads")) {
+      const header = (init.headers as { Authorization: string }).Authorization;
+      requests.push(header);
+      if (header === "Bearer fresh")
+        return Response.json({ error: { errors: [{ reason: "forbidden" }] } }, { status: 403 });
+      if (header === "Bearer edit-token") return Response.json({ items: [] });
+    }
+    return Response.json({ items: [channel] });
+  });
+  await connect(youtube);
+  await youtube.sync();
+  const workspace = store.state().selectedWorkspaceId!;
+  vault.set(`youtube-edit-${workspace}`, JSON.stringify({
+    client,
+    channelId: channel.id,
+    tokens: {
+      access_token: "edit-token", refresh_token: "edit-refresh",
+      expiresAt: Date.now() + 3600000,
+      scopes: ["https://www.googleapis.com/auth/youtube.force-ssl"],
+    },
+  }));
+  const result = await youtube.refreshComments();
+  expect(result.items).toEqual([]);
+  expect(requests).toEqual(["Bearer fresh", "Bearer edit-token"]);
+});
+it("does not request elevated permissions when comments get a quota 403", async () => {
+  const { youtube, vault, store } = setup(async (url) => {
+    if (url.includes("/token")) return Response.json({
+      access_token: "fresh", expires_in: 3600, token_type: "Bearer",
+    });
+    if (url.includes("/commentThreads"))
+      return Response.json({ error: { errors: [{ reason: "quotaExceeded" }] } }, { status: 403 });
+    return Response.json({ items: [channel] });
+  });
+  await connect(youtube);
+  await youtube.sync();
+  const workspace = store.state().selectedWorkspaceId!;
+  vault.set(`youtube-edit-${workspace}`, JSON.stringify({
+    client,
+    channelId: channel.id,
+    tokens: {
+      access_token: "edit-token", refresh_token: "edit-refresh",
+      expiresAt: Date.now() + 3600000,
+      scopes: ["https://www.googleapis.com/auth/youtube.force-ssl"],
+    },
+  }));
+  await expect(youtube.refreshComments()).rejects.toThrow("quota or rate limit");
 });
