@@ -250,7 +250,7 @@ it("saves and deduplicates API daily reports, includes them in backups and prese
   fail = true;
   await expect(
     youtube.syncDaily({ startDate: "2026-01-01", endDate: "2026-01-02" }),
-  ).rejects.toThrow("Google denied");
+  ).rejects.toThrow("HTTP 403");
   expect(new Reports(store).dashboard({}).reports).toHaveLength(1);
   expect(vault.has(`youtube-${store.state().selectedWorkspaceId}`)).toBe(true);
 });
